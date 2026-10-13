@@ -44,6 +44,7 @@ interface AssessmentRow {
   instructor: string;
   score: string | number;
   result: 'PASS' | 'FAIL' | 'DISQUALIFIED';
+  trainingProgram?: string;
 }
 
 const API_BASE = 'http://localhost:5000/api';
@@ -160,6 +161,7 @@ export default function AssessmentHistoryPage() {
     const headers = [
       'Tanggal',
       'Nama Peserta',
+      'Program Training',
       'Assessment',
       'Kendaraan',
       'No Polisi',
@@ -185,6 +187,7 @@ export default function AssessmentHistoryPage() {
       const rowData = [
         formatDate(row.assessmentDate),
         row.participantName,
+        row.trainingProgram || '',
         getAssessmentDisplayName(row.assessmentType),
         row.vehicleType,
         formatNoPolisi(row.licensePlate),
@@ -328,7 +331,7 @@ export default function AssessmentHistoryPage() {
                 <TableRow>
                   <TableCell>Tanggal</TableCell>
                   <TableCell>Nama Peserta</TableCell>
-                  <TableCell>Assessment</TableCell>
+                  <TableCell>Assessment / Program</TableCell>
                   <TableCell>Kendaraan</TableCell>
                   <TableCell>No Polisi</TableCell>
                   <TableCell>Lokasi</TableCell>
@@ -390,6 +393,7 @@ export default function AssessmentHistoryPage() {
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(row.assessmentDate)}</TableCell>
                     <TableCell sx={{ fontWeight: 500, color: tokens.colors.text.primary }}>{row.participantName}</TableCell>
                     <TableCell>
+                      <Typography variant="caption" sx={{ display: 'block', color: tokens.colors.text.secondary }}>{row.trainingProgram || '—'}</Typography>
                       <Box
                         sx={{
                           display: 'inline-block',

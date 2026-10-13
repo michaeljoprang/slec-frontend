@@ -14,7 +14,6 @@ import {
   MonitoringTableSkeleton,
 } from '@/components/monitoring/MonitoringSkeletons';
 import { tokens } from '@/lib/theme';
-import { fetchMonitoringSummary } from '@/services/monitoringService';
 import { getAssessmentDisplayName } from '@/lib/assessment';
 import type { MonitoringResponse, MonitoringFilters } from '@/types/monitoring';
 import type { KpiItem, DistributionData } from '@/types';
@@ -54,7 +53,7 @@ export default function MonitoringPage() {
       if (currentFilters.assessmentType && currentFilters.assessmentType !== 'ALL') {
         filtered = filtered.filter((a: any) => {
           if (currentFilters.assessmentType === 'TMMIN') {
-            return a.assessmentType === 'TMMIN' || (a.assessmentType || '').toLowerCase().includes('forklift');
+            return a.assessmentType === 'TMMIN' || a.assessmentType === 'TMMIN_STANDARD' || a.assessmentType === 'TMMIN_REFRESHMENT' || (a.assessmentType || '').toLowerCase().includes('forklift');
           }
           return a.assessmentType === currentFilters.assessmentType;
         });
@@ -64,6 +63,9 @@ export default function MonitoringPage() {
           const dtStr = (a.assessmentDate || a.createdAt || '').slice(0, 10);
           return dtStr >= currentFilters.from!;
         });
+      }
+      if (currentFilters.trainingProgram && currentFilters.trainingProgram !== 'ALL') {
+        filtered = filtered.filter((a: any) => a.trainingProgram === currentFilters.trainingProgram);
       }
       if (currentFilters.to) {
         filtered = filtered.filter((a: any) => {

@@ -18,6 +18,7 @@ export interface TmminChecklistItem {
   deduction: number;
   penalty: number;
   points: number;
+  plan?: number;
 }
 
 export interface TmminSection {

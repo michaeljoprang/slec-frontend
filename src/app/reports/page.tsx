@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Paper, Typography, Button, Alert, Skeleton } from '@mui/material';
+import { Box, Typography, Button, Alert, Skeleton } from '@mui/material';
 import { Download, FileBarChart } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import ReportsFilterBar, { ReportFilters } from '@/components/reports/ReportsFilterBar';
@@ -9,8 +9,6 @@ import ReportsTable from '@/components/reports/ReportsTable';
 import { tokens } from '@/lib/theme';
 import { getAssessmentDisplayName } from '@/lib/assessment';
 import { exportToCSV } from '@/lib/export';
-
-const API_BASE = 'http://localhost:5000/api';
 
 interface ApiAssessment {
   id: string;
@@ -23,6 +21,8 @@ interface ApiAssessment {
   instructor: string;
   score: string | number;
   result: string;
+  trainingProgram?: string;
+  durationSeconds?: number;
   createdAt?: string;
 }
 
@@ -31,6 +31,7 @@ const DEFAULT_FILTERS: ReportFilters = {
   to: '',
   assessmentType: '',
   result: '',
+  trainingProgram: '',
   search: '',
 };
 
@@ -91,6 +92,9 @@ export default function ReportsPage() {
         return false;
       }
       
+      // Training program
+      if (appliedFilters.trainingProgram && row.trainingProgram !== appliedFilters.trainingProgram) return false;
+
       // Result
       if (appliedFilters.result) {
         // Standardize disqualified to FAIL for generic result filtering, or direct match

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Paper, TextField, Button, MenuItem, Typography, Alert } from '@mui/material';
+import { Box, Paper, TextField, Button, MenuItem, Alert } from '@mui/material';
 import { tokens } from '@/lib/theme';
 import type { MonitoringFilters } from '@/types/monitoring';
 import { Search, RotateCcw } from 'lucide-react';
@@ -16,6 +16,7 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
   const [from, setFrom] = useState(initialFilters.from || '');
   const [to, setTo] = useState(initialFilters.to || '');
   const [assessmentType, setAssessmentType] = useState(initialFilters.assessmentType || 'ALL');
+  const [trainingProgram, setTrainingProgram] = useState(initialFilters.trainingProgram || 'ALL');
   const [error, setError] = useState<string | null>(null);
 
   const handleApply = () => {
@@ -24,7 +25,7 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
       setError('"From" date cannot be after "To" date');
       return;
     }
-    onApply({ from, to, assessmentType });
+    onApply({ from, to, assessmentType, trainingProgram });
   };
 
   const handleReset = () => {
@@ -32,6 +33,7 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
     setFrom('');
     setTo('');
     setAssessmentType('ALL');
+    setTrainingProgram('ALL');
     onReset();
   };
 
@@ -58,6 +60,19 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
         />
         <TextField
           select
+          label="Training Program"
+          size="small"
+          value={trainingProgram}
+          onChange={(e) => setTrainingProgram(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="ALL">All Programs</MenuItem>
+          <MenuItem value="NEOP">NEOP</MenuItem>
+          <MenuItem value="REFRESHMENT">Refreshment</MenuItem>
+          <MenuItem value="TEST_DRIVE">Test Drive</MenuItem>
+        </TextField>
+        <TextField
+          select
           label="Assessment Type"
           size="small"
           value={assessmentType}
@@ -66,7 +81,8 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
         >
           <MenuItem value="ALL">All Types</MenuItem>
           <MenuItem value="DDT">Truck Assessment (DDT)</MenuItem>
-          <MenuItem value="TMMIN">Forklift Operation</MenuItem>
+          <MenuItem value="TMMIN_STANDARD">Forklift - Standard</MenuItem>
+          <MenuItem value="TMMIN_REFRESHMENT">Forklift - Refreshment</MenuItem>
         </TextField>
 
         <Box sx={{ display: 'flex', gap: 1, ml: { md: 'auto' } }}>

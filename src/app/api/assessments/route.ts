@@ -26,6 +26,8 @@ export async function POST(request: Request) {
 
     const payload = {
       assessmentType: data.assessmentType || 'DDT',
+      trainingProgram: data.trainingProgram || header.trainingProgram || null,
+      durationSeconds: data.durationSeconds == null ? null : Number(data.durationSeconds),
       assessmentDate: header.tanggal ? new Date(header.tanggal).toISOString() : new Date().toISOString(),
       participantName: header.namaPeserta || 'Unknown',
       age: header.umur || null,

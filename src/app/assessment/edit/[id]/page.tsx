@@ -53,6 +53,8 @@ import {
   determineTmminResult
 } from '@/features/assessment/tmmin';
 import TmminChecklist from '@/components/assessment/TmminChecklist';
+import ForkliftRefreshmentChecklist from '@/components/assessment/ForkliftRefreshmentChecklist';
+import { FORKLIFT_REFRESHMENT_SECTIONS, calculateForkliftRefreshmentScore } from '@/features/assessment/forkliftRefreshment';
 
 // ---- Wizard steps ----
 type WizardStep = 'type' | 'header' | 'checklist' | 'review' | 'result';
@@ -69,6 +71,7 @@ const EMPTY_HEADER: DDTHeaderInfo = {
   golSIM: '',
   masaBerlakuSIM: '',
   instruktur: '',
+  trainingProgram: '',
 };
 
 const formatTimer = (seconds: number) => {
@@ -135,7 +138,7 @@ export default function EditAssessmentPage() {
       .then(res => res.json())
       .then(data => {
         if(data.error) throw new Error(data.error);
-        setAssessmentType(data.assessmentType as AssessmentType);
+        setAssessmentType((data.assessmentType === 'TMMIN' ? 'TMMIN_STANDARD' : data.assessmentType) as AssessmentType);
         setHeaderInfo({
           tanggal: data.assessmentDate ? data.assessmentDate.split('T')[0] : '',
           lokasiTest: data.testLocation || '',
@@ -146,10 +149,17 @@ export default function EditAssessmentPage() {
           golSIM: data.simCategory || '',
           masaBerlakuSIM: data.simExpiryDate || '',
           instruktur: data.instructor || '',
+          trainingProgram: data.trainingProgram || '',
         });
         setTrainerNotes(data.trainerNotes || '');
+        setLoadedDuration(Number(data.durationSeconds) || 0);
+        setTmminElapsed(Number(data.durationSeconds) || 0);
         
-        if (data.assessmentType === 'TMMIN') {
+        if (data.assessmentType === 'TMMIN_REFRESHMENT') {
+           const freqs: Record<string, number> = {};
+           data.sections?.forEach((sec: any) => sec.answers?.forEach((ans: any) => { freqs[ans.itemId] = Number(ans.answer) || 0; }));
+           setRefreshmentFrequencies(freqs);
+        } else if (data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD') {
            const freqs: Record<string, number> = {};
            data.sections?.forEach((sec: any) => {
              sec.answers?.forEach((ans: any) => {
@@ -177,14 +187,19 @@ export default function EditAssessmentPage() {
 
   // TMMIN state
   const [tmminFrequencies, setTmminFrequencies] = useState<Record<string, number>>({});
+  const [refreshmentFrequencies, setRefreshmentFrequencies] = useState<Record<string, number>>({});
   const [tmminElapsed, setTmminElapsed] = useState(0);
+  const [loadedDuration, setLoadedDuration] = useState(0);
 
   const sections = DDT_SECTIONS;
   const currentSection = sections[currentSectionIndex];
 
   // Live score
   const scoreResult = useMemo(() => {
-    if (assessmentType === 'TMMIN') {
+    if (assessmentType === 'TMMIN_REFRESHMENT') {
+      return calculateForkliftRefreshmentScore(refreshmentFrequencies, tmminElapsed);
+    }
+    if (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD') {
       let totalDeduction = 0;
       const sectionScores = TMMIN_CHECKLIST_DATA.map((sec) => {
         let secDed = 0;
@@ -287,11 +302,15 @@ export default function EditAssessmentPage() {
     setValidationError(null);
     try {
       const payload = {
-        assessmentType,
+        assessmentType: assessmentType === 'TMMIN' ? 'TMMIN_STANDARD' : assessmentType,
         header: headerInfo,
         scoreResult,
         trainerNotes,
-        sections: assessmentType === 'TMMIN'
+        durationSeconds: tmminElapsed || loadedDuration,
+        trainingProgram: headerInfo.trainingProgram,
+        sections: assessmentType === 'TMMIN_REFRESHMENT'
+          ? FORKLIFT_REFRESHMENT_SECTIONS.map((sec) => ({ sectionId: sec.code, sectionName: sec.name, totalPoint: sec.totalPoint, totalDeduction: sec.items.reduce((sum, item) => sum + (refreshmentFrequencies[item.id] || 0) * item.deduction, 0), actualPoint: sec.totalPoint, items: sec.items.filter((item) => (refreshmentFrequencies[item.id] || 0) > 0).map((item) => ({ itemId: item.id, itemName: item.label, answer: String(refreshmentFrequencies[item.id]), deductionPoint: (refreshmentFrequencies[item.id] || 0) * item.deduction })) }))
+          : (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD')
           ? TMMIN_CHECKLIST_DATA.map((sec) => {
               const secScore = scoreResult.sectionScores?.find((s) => s.sectionId === sec.code);
               const secDeduction = secScore ? secScore.deduction : 0;
@@ -403,8 +422,10 @@ export default function EditAssessmentPage() {
             <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
               {assessmentType === 'DDT'
                 ? 'Truck Assessment DDT — Total 100 poin'
-                : assessmentType === 'TMMIN'
-                ? 'Forklift Operation — Base 134 poin'
+                : assessmentType === 'TMMIN_REFRESHMENT'
+                ? 'Forklift - Refreshment — Base 277 poin'
+                : assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD'
+                ? 'Forklift - Standard — Base 134 poin'
                 : 'Edit data penilaian'}
             </Typography>
           </Box>
@@ -876,7 +897,7 @@ export default function EditAssessmentPage() {
         )}
 
         {/* ===== STEP: Checklist (TMMIN) ===== */}
-        {step === 'checklist' && assessmentType === 'TMMIN' && (
+        {step === 'checklist' && (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD') && (
           <Box sx={{ pb: '84px' }}>
             {/* Tab bar */}
             <Paper
@@ -1051,6 +1072,16 @@ export default function EditAssessmentPage() {
                 )}
               </Box>
             </Box>
+          </Box>
+        )}
+
+        {/* ===== STEP: Checklist (Forklift Refreshment) ===== */}
+        {step === 'checklist' && assessmentType === 'TMMIN_REFRESHMENT' && (
+          <Box sx={{ pb: '84px' }}>
+            <Typography sx={{ mb: 2, fontWeight: 700 }}>Forklift - Refreshment · Standar 10 menit · Maksimal 15 menit</Typography>
+            <Tabs value={currentSectionIndex} onChange={(_e, v) => setCurrentSectionIndex(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>{FORKLIFT_REFRESHMENT_SECTIONS.map((section, index) => <Tab key={section.code} value={index} label={section.code} />)}</Tabs>
+            <ForkliftRefreshmentChecklist section={FORKLIFT_REFRESHMENT_SECTIONS[currentSectionIndex]} frequencies={refreshmentFrequencies} onChange={(id, frequency) => { const item = FORKLIFT_REFRESHMENT_SECTIONS.flatMap((section) => section.items).find((entry) => entry.id === id); setRefreshmentFrequencies((previous) => ({ ...previous, [id]: item ? Math.min(item.plan, Math.max(0, frequency)) : 0 })); }} />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 2 }}><Button variant="outlined" onClick={goBack}>Kembali</Button>{currentSectionIndex < FORKLIFT_REFRESHMENT_SECTIONS.length - 1 ? <Button variant="contained" onClick={() => setCurrentSectionIndex((index) => index + 1)}>Sub Job Berikutnya</Button> : <Button variant="contained" onClick={goNext}>Ke Review</Button>}</Box>
           </Box>
         )}
 

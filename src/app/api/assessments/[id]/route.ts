@@ -77,8 +77,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
     
     let calculatedScore = 0;
-    
-    if (assessmentType === 'TMMIN') {
+    const durationSeconds = data.durationSeconds == null ? null : Number(data.durationSeconds);
+
+    if (assessmentType === 'TMMIN_REFRESHMENT') {
+       calculatedScore = Math.max(0, Math.round(((277 - totalDeductions) / 277) * 100));
+    } else if (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD') {
        calculatedScore = ((134 - totalDeductions) / 134) * 100;
        calculatedScore = Math.max(0, Math.min(100, calculatedScore));
     } else {
@@ -88,6 +91,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     const payload = {
       assessmentType,
+      trainingProgram: data.trainingProgram || header.trainingProgram || null,
+      durationSeconds,
       assessmentDate: header.tanggal ? new Date(header.tanggal).toISOString() : new Date().toISOString(),
       participantName: header.namaPeserta || 'Unknown',
       age: header.umur || null,
@@ -99,10 +104,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       testLocation: header.lokasiTest || 'Unknown',
       instructor: header.instruktur || 'Unknown',
       score: calculatedScore,
-      totalPoint: assessmentType === 'TMMIN' ? 134 : 100,
+      totalPoint: assessmentType === 'TMMIN_REFRESHMENT' ? 277 : (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD' ? 134 : 100),
       totalDeduction: totalDeductions,
       actualPoint: calculatedScore,
-      result: calculatedScore >= 70 ? 'PASS' : 'FAIL',
+      result: assessmentType === 'TMMIN_REFRESHMENT' ? (calculatedScore >= 75 ? 'PASS' : 'FAIL') : (calculatedScore >= 70 ? 'PASS' : 'FAIL'),
       trainerNotes: data.trainerNotes || null,
     };
 

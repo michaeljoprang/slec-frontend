@@ -8,7 +8,6 @@ import {
   TableRow,
   TablePagination,
   Paper,
-  Box,
   Typography,
   IconButton,
   Tooltip,
@@ -30,6 +29,7 @@ interface ApiAssessment {
   instructor: string;
   score: string | number;
   result: string;
+  trainingProgram?: string;
 }
 
 interface ReportsTableProps {
@@ -76,12 +76,13 @@ export default function ReportsTable({ data }: ReportsTableProps) {
   return (
     <Paper sx={{ borderRadius: `${tokens.borderRadius.lg}px`, overflow: 'hidden', boxShadow: 'none', border: `1px solid ${tokens.colors.border}` }}>
       <TableContainer>
-        <Table sx={{ minWidth: 800 }}>
+        <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.colors.surface }}>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Date</TableCell>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Participant</TableCell>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Assessment</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Program</TableCell>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Vehicle</TableCell>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Location</TableCell>
               <TableCell sx={{ fontWeight: 600, color: tokens.colors.text.secondary }}>Instructor</TableCell>
@@ -93,7 +94,7 @@ export default function ReportsTable({ data }: ReportsTableProps) {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} sx={{ py: 6, textAlign: 'center' }}>
+                <TableCell colSpan={10} sx={{ py: 6, textAlign: 'center' }}>
                   <Typography variant="body1" sx={{ color: tokens.colors.text.secondary }}>
                     Belum ada data assessment. Silakan lakukan assessment baru.
                   </Typography>
@@ -122,6 +123,7 @@ export default function ReportsTable({ data }: ReportsTableProps) {
                     <TableCell sx={{ color: tokens.colors.text.secondary }}>
                       {getAssessmentDisplayName(row.assessmentType)}
                     </TableCell>
+                    <TableCell sx={{ color: tokens.colors.text.secondary }}>{row.trainingProgram || '—'}</TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ color: tokens.colors.text.primary }}>
                         {row.vehicleType}
@@ -137,7 +139,7 @@ export default function ReportsTable({ data }: ReportsTableProps) {
                         variant="body2"
                         sx={{
                           fontWeight: 700,
-                          color: scoreNum >= 70 ? tokens.colors.status.success : tokens.colors.status.danger,
+                          color: scoreNum >= (row.assessmentType === 'TMMIN_REFRESHMENT' ? 75 : 70) ? tokens.colors.status.success : tokens.colors.status.danger,
                         }}
                       >
                         {scoreNum.toFixed(1)}

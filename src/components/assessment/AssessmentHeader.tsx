@@ -30,6 +30,12 @@ const FIELD_LABELS: { key: keyof DDTHeaderInfo; label: string; type?: string }[]
   { key: 'instruktur', label: 'Instruktur' },
 ];
 
+const TRAINING_PROGRAMS = [
+  { value: 'NEOP', label: 'NEOP' },
+  { value: 'REFRESHMENT', label: 'Refreshment' },
+  { value: 'TEST_DRIVE', label: 'Test Drive' },
+] as const;
+
 export default function AssessmentHeader({ info, onChange, errors }: AssessmentHeaderProps) {
   const handleChange = (key: keyof DDTHeaderInfo) => (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({ ...info, [key]: e.target.value });
@@ -79,6 +85,25 @@ export default function AssessmentHeader({ info, onChange, errors }: AssessmentH
             />
           </Grid>
         ))}
+        <Grid item xs={12} sm={6} md={4}>
+          <TextField
+            fullWidth
+            select
+            required
+            label="Program Training"
+            value={info.trainingProgram || ''}
+            onChange={(e) => onChange({ ...info, trainingProgram: e.target.value as DDTHeaderInfo['trainingProgram'] })}
+            error={!!errors?.trainingProgram}
+            helperText={errors?.trainingProgram}
+            SelectProps={{ native: true }}
+            sx={{
+              '& .MuiInputBase-root': { minHeight: 52 },
+            }}
+          >
+            <option value="">Pilih Program Training</option>
+            {TRAINING_PROGRAMS.map((program) => <option key={program.value} value={program.value}>{program.label}</option>)}
+          </TextField>
+        </Grid>
       </Grid>
     </Paper>
   );

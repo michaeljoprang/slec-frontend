@@ -9,6 +9,7 @@ export interface ReportFilters {
   to: string;
   assessmentType: string;
   result: string;
+  trainingProgram?: string;
   search: string;
 }
 
@@ -90,6 +91,14 @@ export default function ReportsFilterBar({ initialFilters, assessmentTypes, onAp
             {assessmentTypes.map((t) => (
               <MenuItem key={t} value={t}>{getAssessmentDisplayName(t)}</MenuItem>
             ))}
+          </Select>
+        </FormControl>
+
+        {/* Training Program */}
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel id="reports-program-label">Program</InputLabel>
+          <Select labelId="reports-program-label" value={filters.trainingProgram || ''} label="Program" onChange={(e) => handleChange('trainingProgram', e.target.value)}>
+            <MenuItem value="">All</MenuItem><MenuItem value="NEOP">NEOP</MenuItem><MenuItem value="REFRESHMENT">Refreshment</MenuItem><MenuItem value="TEST_DRIVE">Test Drive</MenuItem>
           </Select>
         </FormControl>
 

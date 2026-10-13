@@ -80,7 +80,7 @@ export default function AssessmentReview({
               {result}
             </Typography>
             <Typography variant="body2" sx={{ color: tokens.colors.text.secondary, mt: 0.25 }}>
-              {assessmentType === 'TMMIN' ? 'Forklift Operation' : 'Truck Assessment DDT'}
+              {assessmentType === 'TMMIN_REFRESHMENT' ? 'Forklift - Refreshment' : assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD' ? 'Forklift - Standard' : 'Truck Assessment DDT'}
             </Typography>
           </Box>
           <Box sx={{ ml: 'auto', textAlign: 'right' }}>

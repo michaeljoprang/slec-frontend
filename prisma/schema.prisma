@@ -10,6 +10,8 @@ datasource db {
 model Assessment {
   id              String   @id @default(uuid())
   assessmentType  String
+  trainingProgram String?
+  durationSeconds Int?
   assessmentDate  DateTime @default(now())
   participantName String
   vehicleType     String

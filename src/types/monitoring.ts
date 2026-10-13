@@ -6,6 +6,7 @@ export interface MonitoringFilters {
   from?: string;
   to?: string;
   assessmentType?: string;
+  trainingProgram?: string;
 }
 
 export interface MonitoringSummary {
@@ -26,20 +27,9 @@ export interface MonitoringTrendItem {
   averageScore: number;
 }
 
-export interface ResultDistributionItem {
-  name: string;
-  value: number;
-}
-
-export interface AssessmentTypeDistributionItem {
-  name: string;
-  value: number;
-}
-
-export interface ScoreDistributionItem {
-  name: string;
-  value: number;
-}
+export interface ResultDistributionItem { name: string; value: number; }
+export interface AssessmentTypeDistributionItem { name: string; value: number; }
+export interface ScoreDistributionItem { name: string; value: number; }
 
 export interface ParticipantPerformanceItem {
   participantName: string;

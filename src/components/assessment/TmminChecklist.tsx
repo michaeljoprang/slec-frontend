@@ -70,8 +70,10 @@ export default function TmminChecklist({ section, frequencies, onChange }: Tmmin
                 </Typography>
 
                 <IconButton
-                  onClick={() => onChange(item.id, currentFreq + 1)}
+                  onClick={() => onChange(item.id, item.plan !== undefined ? Math.min(item.plan, currentFreq + 1) : currentFreq + 1)}
+                  disabled={item.plan !== undefined && currentFreq >= item.plan}
                   sx={{
+                    opacity: item.plan !== undefined && currentFreq >= item.plan ? 0.5 : 1,
                     width: 48,
                     height: 48,
                     bgcolor: tokens.colors.borderLight,

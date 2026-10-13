@@ -4,17 +4,31 @@
 
 // ---- Assessment Types ----
 
-export type AssessmentType = 'DDT' | 'TMMIN';
+export type AssessmentType = 'DDT' | 'TMMIN' | 'TMMIN_STANDARD' | 'TMMIN_REFRESHMENT';
+export type TrainingProgram = 'NEOP' | 'REFRESHMENT' | 'TEST_DRIVE' | '';
 export type AssessmentResult = 'PASS' | 'FAIL' | 'DISQUALIFIED';
 export type ChecklistAnswer = 'YES' | 'NO' | null;
 
 // ---- DDT Header Info ----
 
+export function isForkliftAssessment(type: AssessmentType | string | null): boolean {
+  return type === 'TMMIN' || type === 'TMMIN_STANDARD' || type === 'TMMIN_REFRESHMENT';
+}
+
+export function isForkliftRefreshment(type: AssessmentType | string | null): boolean {
+  return type === 'TMMIN_REFRESHMENT';
+}
+
 export function getAssessmentDisplayName(type: string): string {
   if (!type) return '';
-  if (type === 'TMMIN') return 'Forklift Operation';
+  if (type === 'TMMIN' || type === 'TMMIN_STANDARD') return 'Forklift - Standard';
+  if (type === 'TMMIN_REFRESHMENT') return 'Forklift - Refreshment';
   if (type === 'DDT') return 'Truck Assessment';
   return type;
+}
+
+export function getPassingScore(type: string): number {
+  return type === 'TMMIN_REFRESHMENT' ? 75 : 70;
 }
 
 export interface DDTHeaderInfo {
@@ -27,6 +41,7 @@ export interface DDTHeaderInfo {
   golSIM: string;
   masaBerlakuSIM: string;
   instruktur: string;
+  trainingProgram: TrainingProgram;
 }
 
 // ---- Checklist Item ----

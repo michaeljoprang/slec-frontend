@@ -23,7 +23,7 @@ import { TMMIN_CHECKLIST_DATA } from '@/features/assessment/tmmin';
 import { DDT_SECTIONS } from '@/features/assessment/ddt';
 
 function getLabelForItemId(itemId: string, assessmentType: string): string {
-  if (assessmentType === 'TMMIN') {
+  if (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD' || assessmentType === 'TMMIN_REFRESHMENT') {
     for (const sec of TMMIN_CHECKLIST_DATA) {
       const item = sec.items.find(i => i.id === itemId);
       if (item) return item.label;
@@ -73,6 +73,8 @@ interface AssessmentDetail {
   actualPoint: number;
   score: string | number;
   result: 'PASS' | 'FAIL' | 'DISQUALIFIED';
+  trainingProgram?: string;
+  durationSeconds?: number;
   trainerNotes: string | null;
   createdAt: string;
   sections: SectionRow[];
@@ -107,7 +109,7 @@ export default function AssessmentDetailPage({ params }: PageProps) {
         const item = json.data || json;
 
         let computedTotalDeduction = 0;
-        let computedTotalPoint = item.totalPoint || 100;
+        let computedTotalPoint = item.totalPoint || (item.assessmentType === 'TMMIN_REFRESHMENT' ? 277 : item.assessmentType === 'TMMIN' || item.assessmentType === 'TMMIN_STANDARD' ? 134 : 100);
         
         const mappedSections = (item.sections || []).map((sec: any) => {
           let secDeduction = 0;
@@ -160,12 +162,12 @@ export default function AssessmentDetailPage({ params }: PageProps) {
   if (data && (data.result === 'FAIL' || data.result === 'DISQUALIFIED')) {
     let isOvertime = false;
     let hasFatal = false;
-    const isForklift = data.assessmentType === 'TMMIN' || (data.assessmentType || '').toLowerCase().includes('forklift');
+    const isForklift = data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD' || data.assessmentType === 'TMMIN_REFRESHMENT' || (data.assessmentType || '').toLowerCase().includes('forklift');
 
     if (isForklift) {
       const duration = (data as any).duration;
       if (duration !== undefined) {
-        if (duration > 600) isOvertime = true;
+        if (duration > (data.assessmentType === 'TMMIN_REFRESHMENT' ? 900 : 600)) isOvertime = true;
       } else {
         const sumSectionDeductions = data.sections.reduce((acc, sec) => acc + (sec.totalDeduction || 0), 0);
         const overtimePenalty = data.totalDeduction - sumSectionDeductions;
@@ -355,6 +357,8 @@ export default function AssessmentDetailPage({ params }: PageProps) {
               <Grid container spacing={1.5}>
                 {[
                   ['Nama Peserta', data.participantName],
+                  ['Program Training', data.trainingProgram || '—'],
+                  ['Durasi', data.durationSeconds != null ? `${Math.floor(data.durationSeconds / 60)}m ${data.durationSeconds % 60}s` : '—'],
                   ['Umur', data.age],
                   ['Instruktur', data.instructor],
                   ['Tanggal', formatDate(data.assessmentDate)],
