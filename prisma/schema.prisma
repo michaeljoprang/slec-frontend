@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Assessment {
+  id              String   @id @default(uuid())
+  assessmentType  String
+  assessmentDate  DateTime @default(now())
+  participantName String
+  vehicleType     String
+  licensePlate    String
+  testLocation    String
+  instructor      String
+  score           Float
+  result          String
+  age             String?
+  simCategory     String?
+  simIssueDate    String?
+  simExpiryDate   String?
+  totalPoint      Float?
+  totalDeduction  Float?
+  actualPoint     Float?
+  trainerNotes    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sections        AssessmentSection[]
+}
+
+model AssessmentSection {
+  id              String   @id @default(uuid())
+  assessmentId    String
+  assessment      Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  sectionCode     String
+  sectionName     String?
+  totalPoint      Float?
+  totalDeduction  Float?
+  actualPoint     Float?
+
+  answers         AssessmentAnswer[]
+}
+
+model AssessmentAnswer {
+  id                String   @id @default(uuid())
+  sectionId         String
+  section           AssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  itemId            String
+  itemName          String?
+  answer            String
+  deductionPoint    Float
+}
