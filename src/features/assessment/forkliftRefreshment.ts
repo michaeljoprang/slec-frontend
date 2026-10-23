@@ -81,9 +81,10 @@ export const FORKLIFT_REFRESHMENT_SECTIONS: ForkliftRefreshmentSection[] = [
   { id: 'S3', code: 'S3', name: 'SUB JOB 3: UNLOADING RAK KECIL', totalPoint: 118, items: S3.map((label, i) => item('S3', i + 1, label, s3Weights[i], s3Plans[i])) },
 ];
 
+export const FORKLIFT_REFRESHMENT_CHECKLIST_DATA = FORKLIFT_REFRESHMENT_SECTIONS;
+
 export function calculateForkliftRefreshmentTimePenalty(elapsedSeconds: number): number {
   if (elapsedSeconds <= FORKLIFT_REFRESHMENT_STANDARD_TIME_SECONDS) return 0;
-  if (elapsedSeconds > FORKLIFT_REFRESHMENT_MAX_TIME_SECONDS) return 0;
   return Math.ceil((elapsedSeconds - FORKLIFT_REFRESHMENT_STANDARD_TIME_SECONDS) / 30);
 }
 
@@ -92,15 +93,37 @@ export function determineForkliftRefreshmentResult(score: number, elapsedSeconds
   return score >= FORKLIFT_REFRESHMENT_PASSING_SCORE ? 'PASS' : 'FAIL';
 }
 
-export function calculateForkliftRefreshmentScore(frequencies: Record<string, number>, elapsedSeconds: number) {
+export function calculateForkliftRefreshmentScore(
+  frequencies: Record<string, number> = {},
+  elapsedSeconds: number = 0
+) {
   let totalDeduction = 0;
   const sectionScores = FORKLIFT_REFRESHMENT_SECTIONS.map((section) => {
-    const deduction = section.items.reduce((sum, current) => sum + Math.min(current.plan, Math.max(0, frequencies[current.id] || 0)) * current.deduction, 0);
-    totalDeduction += deduction;
-    return { sectionId: section.code, deduction, unansweredCount: 0 };
+    let sectionDeduction = 0;
+    for (const item of section.items) {
+      const freq = Math.max(0, frequencies[item.id] || 0);
+      sectionDeduction += freq * item.deduction;
+    }
+    totalDeduction += sectionDeduction;
+    return { sectionId: section.code, deduction: sectionDeduction, unansweredCount: 0 };
   });
-  const timePenalty = calculateForkliftRefreshmentTimePenalty(elapsedSeconds);
+
+  const timePenalty = calculateForkliftRefreshmentTimePenalty(elapsedSeconds || 0);
+  const totalDeds = totalDeduction + timePenalty;
+  const actual = Math.max(0, FORKLIFT_REFRESHMENT_BASE_SCORE - totalDeds);
   const rawScore = ((FORKLIFT_REFRESHMENT_BASE_SCORE - totalDeduction) / FORKLIFT_REFRESHMENT_BASE_SCORE) * 100;
   const score = Math.max(0, Math.round(rawScore) - timePenalty);
-  return { totalPoint: FORKLIFT_REFRESHMENT_BASE_SCORE, totalDeduction, actual: Math.max(0, FORKLIFT_REFRESHMENT_BASE_SCORE - totalDeduction), score, result: determineForkliftRefreshmentResult(score, elapsedSeconds), sectionScores, timePenalty, elapsedSeconds };
+  const result = determineForkliftRefreshmentResult(score, elapsedSeconds || 0);
+
+  return {
+    totalPoint: FORKLIFT_REFRESHMENT_BASE_SCORE,
+    totalDeduction: totalDeds,
+    actual,
+    score,
+    result,
+    sectionScores,
+    timePenalty,
+    overtimePenalty: timePenalty,
+    elapsedSeconds: elapsedSeconds || 0,
+  };
 }

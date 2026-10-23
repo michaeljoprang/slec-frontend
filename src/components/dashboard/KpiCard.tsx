@@ -12,7 +12,7 @@ import {
   Camera,
   Minus,
 } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { KpiItem } from '@/types';
 
 const lucideIconMap: Record<string, React.ElementType> = {

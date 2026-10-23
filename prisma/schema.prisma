@@ -8,11 +8,9 @@ datasource db {
 }
 
 model Assessment {
-  id              String   @id @default(uuid())
+  id              String              @id @default(uuid())
   assessmentType  String
-  trainingProgram String?
-  durationSeconds Int?
-  assessmentDate  DateTime @default(now())
+  assessmentDate  DateTime            @default(now())
   participantName String
   vehicleType     String
   licensePlate    String
@@ -20,39 +18,39 @@ model Assessment {
   instructor      String
   score           Float
   result          String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  actualPoint     Float?
   age             String?
   simCategory     String?
-  simIssueDate    String?
   simExpiryDate   String?
-  totalPoint      Float?
+  simIssueDate    String?
   totalDeduction  Float?
-  actualPoint     Float?
-  trainerNotes    String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  totalPoint      Float?
+  trainerNotes    String?
+  durationSeconds Int?
+  trainingProgram String?
   sections        AssessmentSection[]
 }
 
 model AssessmentSection {
-  id              String   @id @default(uuid())
-  assessmentId    String
-  assessment      Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  sectionCode     String
-  sectionName     String?
-  totalPoint      Float?
-  totalDeduction  Float?
-  actualPoint     Float?
-
-  answers         AssessmentAnswer[]
+  id             String             @id @default(uuid())
+  assessmentId   String
+  sectionCode    String
+  sectionName    String?
+  totalPoint     Float?
+  totalDeduction Float?
+  actualPoint    Float?
+  answers        AssessmentAnswer[]
+  assessment     Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 }
 
 model AssessmentAnswer {
-  id                String   @id @default(uuid())
-  sectionId         String
-  section           AssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  itemId            String
-  itemName          String?
-  answer            String
-  deductionPoint    Float
+  id             String            @id @default(uuid())
+  sectionId      String
+  itemId         String
+  answer         String
+  deductionPoint Float
+  itemName       String?
+  section        AssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 }

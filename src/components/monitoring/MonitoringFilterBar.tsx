@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Box, Paper, TextField, Button, MenuItem, Alert } from '@mui/material';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
+import { TRAINING_PROGRAM_OPTIONS } from '@/lib/assessment';
 import type { MonitoringFilters } from '@/types/monitoring';
 import { Search, RotateCcw } from 'lucide-react';
 
@@ -67,9 +68,9 @@ export default function MonitoringFilterBar({ initialFilters, onApply, onReset }
           sx={{ minWidth: 160 }}
         >
           <MenuItem value="ALL">All Programs</MenuItem>
-          <MenuItem value="NEOP">NEOP</MenuItem>
-          <MenuItem value="REFRESHMENT">Refreshment</MenuItem>
-          <MenuItem value="TEST_DRIVE">Test Drive</MenuItem>
+          {TRAINING_PROGRAM_OPTIONS.map((p) => (
+            <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+          ))}
         </TextField>
         <TextField
           select

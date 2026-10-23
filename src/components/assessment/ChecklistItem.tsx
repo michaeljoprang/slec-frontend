@@ -3,7 +3,7 @@
 import React from 'react';
 import { Box, Typography, ToggleButton, ToggleButtonGroup, Chip } from '@mui/material';
 import { CheckCircle2, XCircle } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { ChecklistAnswer } from '@/lib/assessment';
 
 interface ChecklistItemProps {
@@ -115,13 +115,15 @@ export default function ChecklistItem({
             fontWeight: 700,
             fontSize: '0.875rem',
             gap: 0.5,
-            color: isYes ? '#fff' : tokens.colors.status.success,
+            color: isYes ? '#fff' : tokens.colors.text.secondary,
             bgcolor: isYes ? `${tokens.colors.status.success} !important` : 'transparent',
-            borderColor: `${tokens.colors.status.success} !important`,
+            borderColor: isYes ? `${tokens.colors.status.success} !important` : `${tokens.colors.border} !important`,
             '&:hover': {
               bgcolor: isYes
                 ? tokens.colors.status.success
                 : `${tokens.colors.status.success}15`,
+              borderColor: tokens.colors.status.success,
+              color: isYes ? '#fff' : tokens.colors.status.success,
             },
           }}
         >
@@ -137,13 +139,15 @@ export default function ChecklistItem({
             fontWeight: 700,
             fontSize: '0.875rem',
             gap: 0.5,
-            color: isNo ? '#fff' : tokens.colors.status.danger,
+            color: isNo ? '#fff' : tokens.colors.text.secondary,
             bgcolor: isNo ? `${tokens.colors.status.danger} !important` : 'transparent',
-            borderColor: `${tokens.colors.status.danger} !important`,
+            borderColor: isNo ? `${tokens.colors.status.danger} !important` : `${tokens.colors.border} !important`,
             '&:hover': {
               bgcolor: isNo
                 ? tokens.colors.status.danger
                 : `${tokens.colors.status.danger}15`,
+              borderColor: tokens.colors.status.danger,
+              color: isNo ? '#fff' : tokens.colors.status.danger,
             },
           }}
         >

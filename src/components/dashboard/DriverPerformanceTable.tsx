@@ -13,7 +13,7 @@ import {
   TableRow,
   Chip,
 } from '@mui/material';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { DriverPerformanceRow } from '@/types';
 
 interface DriverPerformanceTableProps {

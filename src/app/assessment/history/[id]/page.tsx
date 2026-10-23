@@ -13,17 +13,38 @@ import {
   Divider,
   Grid,
 } from '@mui/material';
-import { ArrowLeft, History, CheckCircle2, XCircle, Printer } from 'lucide-react';
+import { ArrowLeft, History, CheckCircle2, XCircle } from 'lucide-react';
+import PrintIcon from '@mui/icons-material/Print';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import ResultBadge from '@/components/common/ResultBadge';
-import { getAssessmentDisplayName } from '@/lib/assessment';
-import { tokens } from '@/lib/theme';
+import {
+  getAssessmentDisplayName,
+  isForkliftRefreshment,
+  getTrainingProgramLabel,
+  formatAuditDocNumber,
+  formatVehicleIdentifier,
+  cleanTrainerNotes,
+  extractDisqualificationReason,
+  formatPersonName,
+  getAssessmentTimeLimits,
+  getSectionTimeLimit,
+} from '@/lib/assessment';
+import { tokens } from '@/lib/themeTokens';
 import { TMMIN_CHECKLIST_DATA } from '@/features/assessment/tmmin';
+import { FORKLIFT_REFRESHMENT_SECTIONS } from '@/features/assessment/forkliftRefreshment';
 import { DDT_SECTIONS } from '@/features/assessment/ddt';
+import AssessmentPrintTemplate from '@/components/assessment/AssessmentPrintTemplate';
+import InlineTimerEditor from '@/components/assessment/InlineTimerEditor';
 
 function getLabelForItemId(itemId: string, assessmentType: string): string {
-  if (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD' || assessmentType === 'TMMIN_REFRESHMENT') {
+  if (assessmentType === 'TMMIN_REFRESHMENT') {
+    for (const sec of FORKLIFT_REFRESHMENT_SECTIONS) {
+      const item = sec.items.find(i => i.id === itemId);
+      if (item) return item.label;
+    }
+  } else if (assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD') {
     for (const sec of TMMIN_CHECKLIST_DATA) {
       const item = sec.items.find(i => i.id === itemId);
       if (item) return item.label;
@@ -52,6 +73,7 @@ interface SectionRow {
   totalPoint: number;
   totalDeduction: number;
   actualPoint: number;
+  durationSeconds?: number;
   answers: AnswerRow[];
 }
 
@@ -64,6 +86,7 @@ interface AssessmentDetail {
   simCategory: string;
   simIssueDate: string;
   simExpiryDate: string;
+  sioKemnaker?: string;
   vehicleType: string;
   licensePlate: string;
   testLocation: string;
@@ -74,7 +97,9 @@ interface AssessmentDetail {
   score: string | number;
   result: 'PASS' | 'FAIL' | 'DISQUALIFIED';
   trainingProgram?: string;
-  durationSeconds?: number;
+  duration?: number | string | null;
+  durationSeconds?: number | string | null;
+  sectionDurations?: Record<string, number>;
   trainerNotes: string | null;
   createdAt: string;
   sections: SectionRow[];
@@ -88,18 +113,40 @@ const formatDate = (iso: string) => {
   }
 };
 
+const formatDuration = (seconds?: number | string | null) => {
+  const numericSeconds = Number(seconds) || 0;
+  const minutes = Math.floor(numericSeconds / 60);
+  const remainingSeconds = numericSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}m ${remainingSeconds.toString().padStart(2, '0')}s`;
+};
+
 interface PageProps {
   params: { id: string };
 }
 
 export default function AssessmentDetailPage({ params }: PageProps) {
   const { id } = params;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoPrint = searchParams.get('print') === 'true';
+
   const [data, setData] = useState<AssessmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/assessments/${id}`)
+    if (!loading && data && autoPrint) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, data, autoPrint]);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    fetch(`/api/assessments/${id}`, { cache: 'no-store' })
       .then((res) => {
         if (res.status === 404) throw new Error('Assessment tidak ditemukan');
         if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
@@ -110,7 +157,8 @@ export default function AssessmentDetailPage({ params }: PageProps) {
 
         let computedTotalDeduction = 0;
         let computedTotalPoint = item.totalPoint || (item.assessmentType === 'TMMIN_REFRESHMENT' ? 277 : item.assessmentType === 'TMMIN' || item.assessmentType === 'TMMIN_STANDARD' ? 134 : 100);
-        
+        const sectionDurations = item.sectionDurations || {};
+
         const mappedSections = (item.sections || []).map((sec: any) => {
           let secDeduction = 0;
           const mappedAnswers = (sec.answers || []).map((ans: any) => {
@@ -123,9 +171,9 @@ export default function AssessmentDetailPage({ params }: PageProps) {
               deductionPoint: ans.deductionPoint || 0,
             };
           });
-          
+
           computedTotalDeduction += secDeduction;
-          
+
           return {
             id: sec.id,
             sectionCode: sec.sectionCode || 'UNKNOWN',
@@ -133,9 +181,15 @@ export default function AssessmentDetailPage({ params }: PageProps) {
             totalPoint: sec.totalPoint || 0,
             totalDeduction: sec.totalDeduction > 0 ? sec.totalDeduction : secDeduction,
             actualPoint: sec.actualPoint || 0,
+            durationSeconds: sec.durationSeconds ?? sectionDurations[sec.sectionCode] ?? 0,
             answers: mappedAnswers,
           };
         });
+
+        const sioMatch = (item.trainerNotes || '').match(/\[SIO Kemnaker:\s*([^\]]+)\]/);
+        const sioExtracted = sioMatch ? sioMatch[1].trim() : '';
+
+        const resolvedDuration = Number(item.durationSeconds ?? item.duration ?? 0);
 
         const mappedData = {
           ...item,
@@ -143,10 +197,14 @@ export default function AssessmentDetailPage({ params }: PageProps) {
           totalDeduction: item.totalDeduction > 0 ? item.totalDeduction : computedTotalDeduction,
           actualPoint: item.actualPoint || item.score,
           sections: mappedSections,
+          sectionDurations,
           age: item.age || '-',
           simCategory: item.simCategory || '-',
           simIssueDate: item.simIssueDate || '-',
           simExpiryDate: item.simExpiryDate || '-',
+          sioKemnaker: item.sioKemnaker || sioExtracted || '',
+          duration: resolvedDuration,
+          durationSeconds: resolvedDuration,
           trainerNotes: item.trainerNotes || null,
         };
         setData(mappedData);
@@ -155,69 +213,172 @@ export default function AssessmentDetailPage({ params }: PageProps) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Clean Overwrite Handler for Total Duration
+  const handleSaveTotalDuration = async (newSeconds: number) => {
+    if (!data) return;
+    try {
+      const res = await fetch(`/api/assessments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationSeconds: newSeconds }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Gagal menyimpan durasi total baru');
+      }
+      const updated = await res.json();
+      const finalSecs = updated.durationSeconds !== undefined ? Number(updated.durationSeconds) : newSeconds;
+
+      setData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          duration: finalSecs,
+          durationSeconds: finalSecs,
+          score: updated.score !== undefined ? updated.score : prev.score,
+          result: updated.result !== undefined ? updated.result : prev.result,
+          totalDeduction: updated.totalDeduction !== undefined ? updated.totalDeduction : prev.totalDeduction,
+          actualPoint: updated.actualPoint !== undefined ? updated.actualPoint : prev.actualPoint,
+        };
+      });
+      router.refresh();
+    } catch (err: any) {
+      console.error('Failed to update total duration:', err);
+      alert(err.message || 'Gagal menyimpan durasi total');
+      throw err;
+    }
+  };
+
+  // Clean Overwrite Handler for Individual Section Duration
+  const handleSaveSectionDuration = async (sectionCode: string, newSecSeconds: number) => {
+    if (!data) return;
+    try {
+      const currentSectionDurations = data.sectionDurations || {};
+      const updatedSectionDurations = {
+        ...currentSectionDurations,
+        [sectionCode]: newSecSeconds,
+      };
+      // Automatically recalculate total duration from the sum of all sections' durations
+      const newTotalSeconds = Object.values(updatedSectionDurations).reduce(
+        (sum, s) => sum + (Number(s) || 0),
+        0
+      );
+
+      const res = await fetch(`/api/assessments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionDurations: updatedSectionDurations,
+          durationSeconds: newTotalSeconds,
+        }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Gagal menyimpan durasi seksi baru');
+      }
+      const updated = await res.json();
+      const finalSecs = updated.durationSeconds !== undefined ? Number(updated.durationSeconds) : newTotalSeconds;
+
+      setData((prev) => {
+        if (!prev) return null;
+        const mappedSecs = prev.sections.map((s) => {
+          if (s.sectionCode === sectionCode) {
+            return { ...s, durationSeconds: newSecSeconds };
+          }
+          return s;
+        });
+        return {
+          ...prev,
+          duration: finalSecs,
+          durationSeconds: finalSecs,
+          sectionDurations: updatedSectionDurations,
+          sections: mappedSecs,
+          score: updated.score !== undefined ? updated.score : prev.score,
+          result: updated.result !== undefined ? updated.result : prev.result,
+          totalDeduction: updated.totalDeduction !== undefined ? updated.totalDeduction : prev.totalDeduction,
+          actualPoint: updated.actualPoint !== undefined ? updated.actualPoint : prev.actualPoint,
+        };
+      });
+      router.refresh();
+    } catch (err: any) {
+      console.error('Failed to update section duration:', err);
+      alert(err.message || 'Gagal menyimpan durasi seksi');
+      throw err;
+    }
+  };
+
   const isPassing = data?.result === 'PASS';
   const scoreNum = data ? parseFloat(String(data.score)) : 0;
 
   let disqualificationReasons: string[] = [];
+  let manualFatalReason: string | null = null;
+  let isOvertime = false;
+
   if (data && (data.result === 'FAIL' || data.result === 'DISQUALIFIED')) {
-    let isOvertime = false;
-    let hasFatal = false;
-    const isForklift = data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD' || data.assessmentType === 'TMMIN_REFRESHMENT' || (data.assessmentType || '').toLowerCase().includes('forklift');
+    const isRefreshment = isForkliftRefreshment(data.assessmentType);
+    const maxDurationSeconds = isRefreshment ? 900 : 600;
+    const maxDurationText = isRefreshment ? '15m 00s' : '10m 00s';
+    const durationNum = Number(data.duration) || Number(data.durationSeconds) || 0;
+    isOvertime = durationNum > maxDurationSeconds;
 
-    if (isForklift) {
-      const duration = (data as any).duration;
-      if (duration !== undefined) {
-        if (duration > (data.assessmentType === 'TMMIN_REFRESHMENT' ? 900 : 600)) isOvertime = true;
-      } else {
-        const sumSectionDeductions = data.sections.reduce((acc, sec) => acc + (sec.totalDeduction || 0), 0);
-        const overtimePenalty = data.totalDeduction - sumSectionDeductions;
-        if (overtimePenalty >= 12) isOvertime = true;
-      }
-    }
-
-    data.sections.forEach(sec => {
-      sec.answers.forEach(ans => {
-        if (ans.deductionPoint > 0) {
-          let label = (ans.itemId || '').toLowerCase();
-          if (data.assessmentType === 'TMMIN') {
-            for (const tSec of TMMIN_CHECKLIST_DATA) {
-              const found = tSec.items.find(i => i.id === ans.itemId);
-              if (found) {
-                label = found.label.toLowerCase();
-                break;
-              }
-            }
-          }
-          if (
-            label.includes('kontak dengan rintangan') ||
-            label.includes('menabrak safety cone') ||
-            label.includes('menabrak') ||
-            label.includes('fatal') ||
-            ans.itemId === 'S2_7'
-          ) {
-            hasFatal = true;
-          }
-        }
-      });
-    });
-
+    // a. Cek apakah durasi ujian melebihi batas waktu maksimal
     if (isOvertime) {
-      disqualificationReasons.push("Melewati batas waktu maksimal (10 Menit).");
+      disqualificationReasons.push(
+        `Diskualifikasi Waktu: Durasi ujian (${formatDuration(durationNum)}) melebihi batas waktu maksimal (${maxDurationText}).`
+      );
     }
-    if (hasFatal) {
-      disqualificationReasons.push("Pelanggaran fatal: Menabrak rintangan/cone.");
+
+    // b. Cek alasan diskualifikasi manual dari trainer (Fatal Error / Human Error)
+    manualFatalReason = extractDisqualificationReason(data.trainerNotes);
+    if (manualFatalReason) {
+      disqualificationReasons.push(
+        `Diskualifikasi (Pelanggaran Fatal): ${manualFatalReason}`
+      );
     }
+
+    // c. Jika gagal murni karena skor di bawah Passing Grade (< 70)
+    const passingScore = isRefreshment ? 75 : 70;
+    if (scoreNum < passingScore && !manualFatalReason && !isOvertime) {
+      disqualificationReasons.push(
+        `Tidak Lulus: Skor akhir di bawah standar kelulusan minimal (Passing Grade ${passingScore}).`
+      );
+    }
+
+    // Fallback jika status DISQUALIFIED tetapi tidak ada rincian di atas
     if (disqualificationReasons.length === 0 && data.result === 'DISQUALIFIED') {
-      disqualificationReasons.push("Pelanggaran fatal atau melewati batas waktu.");
+      disqualificationReasons.push('Diskualifikasi: Pelanggaran fatal atau diskualifikasi oleh penguji.');
+    } else if (disqualificationReasons.length === 0 && data.result === 'FAIL') {
+      disqualificationReasons.push(`Tidak Lulus: Skor akhir (${scoreNum.toFixed(1)}) tidak memenuhi standar kelulusan minimal.`);
     }
   }
 
   return (
     <AppShell pageTitle="Detail Assessment">
-      <style>{`
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @media screen {
+          .print-only {
+            display: none !important;
+          }
+        }
         @media print {
-          body, html {
+          html,
+          body,
+          #__next,
+          body > div,
+          main {
             background-color: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            display: block !important;
+            position: static !important;
           }
           nav, aside, header, .MuiDrawer-root, .hide-on-print {
             display: none !important;
@@ -226,18 +387,22 @@ export default function AssessmentDetailPage({ params }: PageProps) {
             margin: 0 !important;
             padding: 0 !important;
             max-width: 100% !important;
+            width: 100% !important;
+          }
+          .print-only {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
           }
           * {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
           }
-          .avoid-page-break {
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
         }
-      `}</style>
-      <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
+      `,
+        }}
+      />
+      <Box className="hide-on-print" sx={{ maxWidth: 1100, mx: 'auto' }}>
 
         {/* Page header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
@@ -258,19 +423,20 @@ export default function AssessmentDetailPage({ params }: PageProps) {
               <Typography variant="h2" sx={{ fontWeight: 700, color: tokens.colors.text.primary, lineHeight: 1.2 }}>
                 Detail Assessment
               </Typography>
-              <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
-                {loading ? 'Memuat...' : (data ? data.participantName : '—')}
+              <Typography variant="body2" className="capitalize" sx={{ color: tokens.colors.text.secondary, textTransform: 'capitalize' }}>
+                {loading ? 'Memuat...' : (data ? formatPersonName(data.participantName) : '—')}
               </Typography>
             </Box>
           </Box>
           <Button
             className="hide-on-print"
             variant="contained"
-            startIcon={<Printer size={16} />}
+            startIcon={<PrintIcon fontSize="small" />}
             size="small"
             onClick={() => window.print()}
+            sx={{ fontWeight: 600, bgcolor: tokens.colors.primary, '&:hover': { bgcolor: '#0e6b63' } }}
           >
-            Cetak PDF
+            Cetak Hard Copy / PDF
           </Button>
         </Box>
 
@@ -304,49 +470,73 @@ export default function AssessmentDetailPage({ params }: PageProps) {
                   ? <CheckCircle2 size={40} color={tokens.colors.status.success} strokeWidth={1.5} />
                   : <XCircle size={40} color={tokens.colors.status.danger} strokeWidth={1.5} />}
                 <Box>
-                  <ResultBadge result={isPassing ? 'PASS' : 'FAIL'} />
-                  {data.result === 'DISQUALIFIED' && (
-                    <Chip label="DISQUALIFIED" size="small" sx={{ ml: 1, bgcolor: tokens.colors.status.warningBg, color: tokens.colors.status.warning, fontWeight: 700 }} />
-                  )}
-                  <Typography variant="h3" sx={{ fontWeight: 800, color: tokens.colors.text.primary, mt: 0.5 }}>
-                    {scoreNum.toFixed(1)} / 100
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
-                    {getAssessmentDisplayName(data.assessmentType)} · {formatDate(data.assessmentDate)}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <ResultBadge result={data.result || (isPassing ? 'PASS' : 'FAIL')} />
+                  </Box>
+                  {(() => {
+                    const isRefreshment = isForkliftRefreshment(data.assessmentType);
+                    const formattedScore = isRefreshment ? Math.round(scoreNum).toString() : scoreNum.toFixed(1);
+                    return (
+                      <>
+                        <Typography variant="h3" sx={{ fontWeight: 800, color: tokens.colors.text.primary, mt: 0.5 }}>
+                          {formattedScore} / 100
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
+                          {getAssessmentDisplayName(data.assessmentType)} · {formatDate(data.assessmentDate)}
+                        </Typography>
+                      </>
+                    );
+                  })()}
                 </Box>
               </Box>
 
               {disqualificationReasons.length > 0 && (
                 <Alert severity="error" sx={{ mb: 3, fontWeight: 600 }}>
-                  Alasan Diskualifikasi: {disqualificationReasons.join(' ')}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'inherit' }}>
+                      {data.result === 'DISQUALIFIED' || manualFatalReason || isOvertime
+                        ? 'Alasan Diskualifikasi:'
+                        : 'Keterangan Hasil Evaluasi:'}
+                    </Typography>
+                    {disqualificationReasons.map((reason, idx) => (
+                      <Typography key={idx} variant="body2" sx={{ fontWeight: 600, color: 'inherit' }}>
+                        • {reason}
+                      </Typography>
+                    ))}
+                  </Box>
                 </Alert>
               )}
 
-              <Grid container spacing={2}>
-                {[
-                  { label: 'Total Point', value: data.totalPoint },
-                  { label: 'Total Deduction', value: `-${data.totalDeduction}`, danger: data.totalDeduction > 0 },
-                  { label: 'Actual', value: data.actualPoint },
-                  { label: 'Score', value: scoreNum.toFixed(1) },
-                ].map(({ label, value, danger }) => (
-                  <Grid item xs={6} sm={3} key={label} className="avoid-page-break">
-                    <Paper
-                      sx={{
-                        p: 1.5,
-                        textAlign: 'center',
-                        bgcolor: danger ? tokens.colors.status.dangerBg : tokens.colors.borderLight,
-                        border: `1px solid ${danger ? tokens.colors.status.danger + '30' : tokens.colors.border}`,
-                      }}
-                    >
-                      <Typography sx={{ fontSize: '1.375rem', fontWeight: 800, color: danger ? tokens.colors.status.danger : tokens.colors.text.primary }}>
-                        {value}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>{label}</Typography>
-                    </Paper>
+              {(() => {
+                const isRefreshment = isForkliftRefreshment(data.assessmentType);
+                const formattedScore = isRefreshment ? Math.round(scoreNum).toString() : scoreNum.toFixed(1);
+                return (
+                  <Grid container spacing={2}>
+                    {[
+                      { label: 'Total Point', value: data.totalPoint },
+                      { label: 'Total Deduction', value: `-${data.totalDeduction}`, danger: data.totalDeduction > 0 },
+                      { label: 'Actual', value: data.actualPoint },
+                      { label: 'Score', value: formattedScore },
+                    ].map(({ label, value, danger }) => (
+                      <Grid item xs={6} sm={3} key={label} className="avoid-page-break">
+                        <Paper
+                          sx={{
+                            p: 1.5,
+                            textAlign: 'center',
+                            bgcolor: danger ? tokens.colors.status.dangerBg : tokens.colors.borderLight,
+                            border: `1px solid ${danger ? tokens.colors.status.danger + '30' : tokens.colors.border}`,
+                          }}
+                        >
+                          <Typography sx={{ fontSize: '1.375rem', fontWeight: 800, color: danger ? tokens.colors.status.danger : tokens.colors.text.primary }}>
+                            {value}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>{label}</Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
                   </Grid>
-                ))}
-              </Grid>
+                );
+              })()}
             </Paper>
 
             {/* Header info */}
@@ -355,22 +545,54 @@ export default function AssessmentDetailPage({ params }: PageProps) {
                 Informasi Peserta
               </Typography>
               <Grid container spacing={1.5}>
-                {[
-                  ['Nama Peserta', data.participantName],
-                  ['Program Training', data.trainingProgram || '—'],
-                  ['Durasi', data.durationSeconds != null ? `${Math.floor(data.durationSeconds / 60)}m ${data.durationSeconds % 60}s` : '—'],
-                  ['Umur', data.age],
-                  ['Instruktur', data.instructor],
-                  ['Tanggal', formatDate(data.assessmentDate)],
-                  ['Lokasi Test', data.testLocation],
-                  ['Jenis Kendaraan', data.vehicleType],
-                  ['No Polisi', data.licensePlate],
-                  ['Gol SIM', data.simCategory],
-                  ['Masa Berlaku SIM', data.simExpiryDate !== '-' ? data.simExpiryDate : '—'],
-                ].map(([label, value]) => (
-                  <Grid item xs={12} sm={6} md={4} key={label}>
-                    <Typography variant="caption" sx={{ color: tokens.colors.text.secondary, display: 'block' }}>{label}</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: tokens.colors.text.primary }}>{value || '—'}</Typography>
+                {(() => {
+                  const isForklift = Boolean(
+                    (data.vehicleType && data.vehicleType.toLowerCase().includes('forklift')) ||
+                    (data.assessmentType && data.assessmentType.toLowerCase().includes('forklift')) ||
+                    (data.assessmentType && (
+                      data.assessmentType === 'TMMIN' ||
+                      data.assessmentType === 'TMMIN_STANDARD' ||
+                      data.assessmentType === 'TMMIN_REFRESHMENT'
+                    )) ||
+                    (data.trainingProgram && data.trainingProgram.toLowerCase().includes('forklift'))
+                  );
+                  const timeLimits = getAssessmentTimeLimits(data.assessmentType);
+                  const totalSecs = Number(data.durationSeconds ?? data.duration ?? 0);
+
+                  return [
+                    { label: 'Nama Peserta', value: formatPersonName(data.participantName) },
+                    { label: 'Program Training', value: getTrainingProgramLabel(data.trainingProgram) },
+                    {
+                      label: 'Durasi Total',
+                      isDuration: true,
+                      seconds: totalSecs,
+                      limit: timeLimits.standardSeconds,
+                    },
+                    { label: 'Umur', value: data.age },
+                    { label: 'Instruktur', value: formatPersonName(data.instructor) },
+                    { label: 'Tanggal', value: formatDate(data.assessmentDate) },
+                    { label: 'Lokasi Test', value: data.testLocation },
+                    { label: 'Jenis Kendaraan', value: data.vehicleType },
+                    { label: isForklift ? 'No. Body' : 'No. Polisi', value: formatVehicleIdentifier(data.licensePlate, isForklift) },
+                    { label: 'Gol SIM', value: data.simCategory },
+                    { label: 'Masa Berlaku SIM', value: data.simExpiryDate !== '-' ? data.simExpiryDate : '—' },
+                    { label: 'SIO Kemnaker', value: data.sioKemnaker || '—' },
+                  ];
+                })().map((item) => (
+                  <Grid item xs={12} sm={6} md={4} key={item.label}>
+                    <Typography variant="caption" sx={{ color: tokens.colors.text.secondary, display: 'block' }}>{item.label}</Typography>
+                    {item.isDuration ? (
+                      <Box sx={{ mt: 0.25 }}>
+                        <InlineTimerEditor
+                          initialSeconds={item.seconds}
+                          timeLimitSeconds={item.limit}
+                          onSave={handleSaveTotalDuration}
+                          size="small"
+                        />
+                      </Box>
+                    ) : (
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: tokens.colors.text.primary }}>{item.value || '—'}</Typography>
+                    )}
                   </Grid>
                 ))}
               </Grid>
@@ -379,12 +601,23 @@ export default function AssessmentDetailPage({ params }: PageProps) {
             {/* Trainer Notes */}
             <Paper sx={{ p: { xs: 2, sm: 2.5 }, mb: 2 }}>
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5, color: tokens.colors.text.primary }}>
-                Catatan Trainer
+                Catatan & Rekomendasi Instruktur
               </Typography>
               <Box sx={{ p: 2, bgcolor: tokens.colors.background, borderRadius: 1, border: `1px solid ${tokens.colors.borderLight}` }}>
-                <Typography variant="body1" sx={{ color: data.trainerNotes ? tokens.colors.text.primary : tokens.colors.text.secondary, whiteSpace: 'pre-wrap' }}>
-                  {data.trainerNotes || 'Tidak ada catatan.'}
-                </Typography>
+                {(() => {
+                  const notes = cleanTrainerNotes(data.trainerNotes || (data as any).notes);
+                  return (
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: notes ? tokens.colors.text.primary : tokens.colors.text.secondary,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {notes || '-'}
+                    </Typography>
+                  );
+                })()}
               </Box>
             </Paper>
 
@@ -398,6 +631,9 @@ export default function AssessmentDetailPage({ params }: PageProps) {
                 {data.sections.map((sec) => {
                   const hasDeduction = sec.totalDeduction > 0;
                   const deductedAnswers = sec.answers.filter((a) => a.deductionPoint > 0);
+                  const secDuration = (data.sectionDurations?.[sec.sectionCode]) ?? sec.durationSeconds ?? 0;
+                  const secLimit = getSectionTimeLimit(data.assessmentType, sec.sectionCode);
+
                   return (
                     <Box key={sec.id} className="avoid-page-break">
                       <Box
@@ -408,11 +644,11 @@ export default function AssessmentDetailPage({ params }: PageProps) {
                           p: 1.5,
                           borderRadius: `${tokens.borderRadius.md}px`,
                           bgcolor: hasDeduction ? tokens.colors.status.dangerBg : tokens.colors.borderLight,
-                          gap: 2,
+                          gap: 1.5,
                           flexWrap: 'wrap',
                         }}
                       >
-                        <Box>
+                        <Box sx={{ minWidth: 200, flex: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 600, color: tokens.colors.text.primary }}>
                             {sec.sectionName}
                             <Typography component="span" variant="caption" sx={{ ml: 1, color: tokens.colors.text.secondary }}>
@@ -425,6 +661,20 @@ export default function AssessmentDetailPage({ params }: PageProps) {
                             </Typography>
                           )}
                         </Box>
+
+                        {/* Inline Timer Editor for this Section */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, my: { xs: 0.5, sm: 0 } }}>
+                          <Typography variant="caption" sx={{ color: tokens.colors.text.secondary, fontWeight: 600 }}>
+                            Waktu Seksi:
+                          </Typography>
+                          <InlineTimerEditor
+                            initialSeconds={secDuration}
+                            timeLimitSeconds={secLimit}
+                            onSave={(newSecDuration) => handleSaveSectionDuration(sec.sectionCode, newSecDuration)}
+                            size="small"
+                          />
+                        </Box>
+
                         <Typography variant="body2" sx={{ fontWeight: 700, color: tokens.colors.text.primary, minWidth: 80, textAlign: 'right' }}>
                           {sec.actualPoint} / {sec.totalPoint}
                         </Typography>
@@ -451,13 +701,28 @@ export default function AssessmentDetailPage({ params }: PageProps) {
               </Box>
 
               <Divider sx={{ my: 2 }} />
-              <Typography variant="caption" sx={{ color: tokens.colors.text.tertiary }}>
-                ID: {data.id} · Dibuat: {formatDate(data.createdAt)}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
+                  No. Dokumen:{' '}
+                  <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 700, color: tokens.colors.text.primary, bgcolor: tokens.colors.borderLight, px: 1, py: 0.25, borderRadius: '4px' }}>
+                    {formatAuditDocNumber(data.id, data.assessmentType, data.assessmentDate)}
+                  </Box>
+                </Typography>
+                <Typography variant="caption" sx={{ color: tokens.colors.text.tertiary }}>
+                  ID: {data.id} · Dibuat: {formatDate(data.createdAt)}
+                </Typography>
+              </Box>
             </Paper>
           </>
         )}
       </Box>
+
+      {/* Formal A4 Print Template */}
+      {data && (
+        <div className="print-only">
+          <AssessmentPrintTemplate data={data} />
+        </div>
+      )}
     </AppShell>
   );
 }

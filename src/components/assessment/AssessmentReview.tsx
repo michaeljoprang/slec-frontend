@@ -18,19 +18,21 @@ import {
   TextField,
 } from '@mui/material';
 import { CheckCircle2, XCircle, ArrowLeft, Send, ChevronDown } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { DDTHeaderInfo, AssessmentSection, AnswerMap, DDTScoreResult } from '@/lib/assessment';
+import { isForkliftAssessment, isForkliftRefreshment, isForkliftStandard, getAssessmentDisplayName, getTrainingProgramLabel, formatVehicleIdentifier } from '@/lib/assessment';
 
 interface AssessmentReviewProps {
   headerInfo: DDTHeaderInfo;
-  sections: AssessmentSection[];
+  sections: AssessmentSection[] | any[];
   answers: AnswerMap;
-  scoreResult: DDTScoreResult;
+  scoreResult: DDTScoreResult | any;
   onBack: () => void;
   onSubmit: () => void;
   isSubmitting?: boolean;
   assessmentType?: string;
   tmminFrequencies?: Record<string, number>;
+  refreshmentFrequencies?: Record<string, number>;
   trainerNotes?: string;
   setTrainerNotes?: (val: string) => void;
 }
@@ -45,11 +47,48 @@ export default function AssessmentReview({
   isSubmitting = false,
   assessmentType = 'DDT',
   tmminFrequencies = {},
+  refreshmentFrequencies = {},
   trainerNotes = '',
   setTrainerNotes,
 }: AssessmentReviewProps) {
-  const { totalPoint, totalDeduction, actual, score, result } = scoreResult;
+  const isRefreshment = isForkliftRefreshment(assessmentType);
+
+  const effectiveScoreResult = React.useMemo(() => {
+    if (isRefreshment) {
+      let totalDed = 0;
+      const sectionScores = (sections || []).map((sec: any) => {
+        let secDed = 0;
+        for (const it of sec.items || []) {
+          const freq = Math.max(0, refreshmentFrequencies[it.id] || 0);
+          secDed += freq * (it.deduction ?? 1);
+        }
+        totalDed += secDed;
+        return { sectionId: sec.code || sec.id, deduction: secDed, unansweredCount: 0 };
+      });
+      const timePenalty = scoreResult?.timePenalty || 0;
+      const basePoint = 277;
+      const actualPt = Math.max(0, basePoint - totalDed);
+      const rawScore = ((basePoint - totalDed) / basePoint) * 100;
+      const roundedScore = Math.max(0, Math.round(rawScore) - timePenalty);
+      const isOvertime = (scoreResult?.elapsedSeconds || 0) > 900;
+      const res = isOvertime ? 'DISQUALIFIED' : (roundedScore >= 75 ? 'PASS' : 'FAIL');
+
+      return {
+        totalPoint: basePoint,
+        totalDeduction: totalDed,
+        actual: actualPt,
+        score: roundedScore,
+        result: res,
+        sectionScores,
+        timePenalty,
+      };
+    }
+    return scoreResult;
+  }, [isRefreshment, sections, refreshmentFrequencies, scoreResult]);
+
+  const { totalPoint, totalDeduction, actual, score, result } = effectiveScoreResult;
   const isPassing = result === 'PASS';
+  const formattedScore = isRefreshment ? Math.round(score).toString() : (typeof score === 'number' ? score.toFixed(1) : score);
 
   return (
     <Box>
@@ -80,12 +119,12 @@ export default function AssessmentReview({
               {result}
             </Typography>
             <Typography variant="body2" sx={{ color: tokens.colors.text.secondary, mt: 0.25 }}>
-              {assessmentType === 'TMMIN_REFRESHMENT' ? 'Forklift - Refreshment' : assessmentType === 'TMMIN' || assessmentType === 'TMMIN_STANDARD' ? 'Forklift - Standard' : 'Truck Assessment DDT'}
+              {getAssessmentDisplayName(assessmentType)}
             </Typography>
           </Box>
           <Box sx={{ ml: 'auto', textAlign: 'right' }}>
             <Typography sx={{ fontSize: '2.25rem', fontWeight: 800, color: tokens.colors.text.primary, lineHeight: 1 }}>
-              {score.toFixed(1)}
+              {formattedScore}
             </Typography>
             <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>
               Nilai Akhir
@@ -100,7 +139,7 @@ export default function AssessmentReview({
             { label: 'Total Point', value: totalPoint },
             { label: 'Total Deduction', value: `-${totalDeduction}` },
             { label: 'Actual', value: actual },
-            { label: 'Score', value: score.toFixed(1) },
+            { label: 'Score', value: formattedScore },
           ].map(({ label, value }) => (
             <Grid item xs={6} sm={3} key={label}>
               <Typography variant="caption" sx={{ color: tokens.colors.text.secondary, display: 'block' }}>
@@ -120,17 +159,26 @@ export default function AssessmentReview({
           Informasi Peserta
         </Typography>
         <Grid container spacing={1.5}>
-          {[
-            ['Tanggal', headerInfo.tanggal],
-            ['Lokasi Test', headerInfo.lokasiTest],
-            ['Jenis Kendaraan', headerInfo.jenisKendaraan],
-            ['No Polisi', headerInfo.noPolisi],
-            ['Nama Peserta', headerInfo.namaPeserta],
-            ['Umur', headerInfo.umur],
-            ['Gol SIM / Terbitan', headerInfo.golSIM],
-            ['Masa Berlaku SIM', headerInfo.masaBerlakuSIM],
-            ['Instruktur', headerInfo.instruktur],
-          ].map(([label, value]) => (
+          {(() => {
+            const isForklift = Boolean(
+              isForkliftAssessment(assessmentType) ||
+              (headerInfo.jenisKendaraan && headerInfo.jenisKendaraan.toLowerCase().includes('forklift')) ||
+              (headerInfo.trainingProgram && headerInfo.trainingProgram.toLowerCase().includes('forklift'))
+            );
+            return [
+              ['Tanggal', headerInfo.tanggal],
+              ['Program Training', getTrainingProgramLabel(headerInfo.trainingProgram)],
+              ['Lokasi Test', headerInfo.lokasiTest || 'CCR CIBITUNG 1'],
+              ['Jenis Kendaraan', headerInfo.jenisKendaraan],
+              [isForklift ? 'No. Body' : 'No. Polisi', formatVehicleIdentifier(headerInfo.noPolisi, isForklift)],
+              ['Nama Peserta', headerInfo.namaPeserta],
+              ['Umur', headerInfo.umur],
+              [isForklift ? 'Lisensi Operator (SIO)' : 'Golongan SIM', headerInfo.golSIM],
+              [isForklift ? 'Masa Berlaku SIO' : 'Masa Berlaku SIM', headerInfo.masaBerlakuSIM],
+              [isForklift ? 'Status SIO Kemnaker' : 'SIO Kemnaker', headerInfo.sioKemnaker || '—'],
+              ['Instruktur', headerInfo.instruktur],
+            ];
+          })().map(([label, value]) => (
             <Grid item xs={12} sm={6} md={4} key={label}>
               <Box>
                 <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>
@@ -147,8 +195,12 @@ export default function AssessmentReview({
 
       {/* Section summaries */}
       {sections.map((section: any, idx) => {
-        const sScore = scoreResult.sectionScores[idx];
-        const deduction = sScore?.deduction ?? 0;
+        const sScore = effectiveScoreResult.sectionScores?.[idx];
+        const deduction = isRefreshment
+          ? (section.items || []).reduce((sum: number, i: any) => sum + (refreshmentFrequencies[i.id] || 0) * (i.deduction ?? 1), 0)
+          : (sScore?.deduction ?? 0);
+        const currentFreqs = isRefreshment ? refreshmentFrequencies : tmminFrequencies;
+        const totalMistakes = section.items.reduce((sum: number, i: any) => sum + (currentFreqs[i.id] || 0), 0);
 
         return (
           <Accordion
@@ -199,10 +251,15 @@ export default function AssessmentReview({
                     )}
                   </Box>
                 ) : (
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5, alignItems: 'center' }}>
                     <Typography variant="body2" sx={{ color: tokens.colors.status.danger, fontWeight: 600 }}>
-                      Mistakes recorded: {section.items.reduce((sum: number, i: any) => sum + (tmminFrequencies[i.id] || 0), 0)}
+                      Mistakes recorded: {totalMistakes}
                     </Typography>
+                    {isRefreshment && section.totalPoint && (
+                      <Typography variant="body2" sx={{ color: tokens.colors.text.secondary, fontWeight: 500 }}>
+                        · Seksi Score: {Math.max(0, section.totalPoint - deduction)} / {section.totalPoint}
+                      </Typography>
+                    )}
                   </Box>
                 )}
               </Box>
@@ -234,6 +291,60 @@ export default function AssessmentReview({
                           <Typography variant="body2" sx={{ fontWeight: 700, color: isNo ? tokens.colors.status.danger : isUnanswered ? tokens.colors.status.warning : tokens.colors.status.success }}>
                             {ans || '—'}
                           </Typography>
+                        </Box>
+                      </ListItem>
+                    );
+                  } else if (isRefreshment) {
+                    const freq = refreshmentFrequencies[item.id] || 0;
+                    const hasDeduction = freq > 0;
+                    const itemDeduction = freq * item.deduction;
+                    return (
+                      <ListItem
+                        key={item.id}
+                        divider={!isLast}
+                        sx={{ py: 1.5, px: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: hasDeduction ? tokens.colors.status.danger : tokens.colors.text.primary,
+                              fontWeight: hasDeduction ? 600 : 400,
+                            }}
+                          >
+                            {item.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+                            <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>
+                              Bobot: <strong>{item.deduction}</strong>
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: tokens.colors.text.secondary }}>
+                              Plan: <strong>{item.plan}</strong>
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
+                          <Chip
+                            label={`${freq}x / ${item.plan}`}
+                            size="small"
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              bgcolor: hasDeduction ? tokens.colors.status.dangerBg : tokens.colors.borderLight,
+                              color: hasDeduction ? tokens.colors.status.danger : tokens.colors.text.secondary,
+                            }}
+                          />
+                          <Box sx={{ minWidth: 60, textAlign: 'right' }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 700,
+                                color: hasDeduction ? tokens.colors.status.danger : tokens.colors.text.tertiary,
+                              }}
+                            >
+                              {hasDeduction ? `-${itemDeduction}` : '-'}
+                            </Typography>
+                          </Box>
                         </Box>
                       </ListItem>
                     );
@@ -280,7 +391,7 @@ export default function AssessmentReview({
           fullWidth
           multiline
           minRows={3}
-          placeholder="Tambahkan catatan, observasi, atau rekomendasi..."
+          placeholder="Tulis catatan evaluasi atau rekomendasi trainer di sini..."
           value={trainerNotes}
           onChange={(e) => setTrainerNotes?.(e.target.value)}
           sx={{

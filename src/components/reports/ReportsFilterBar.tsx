@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, TextField, InputAdornment, FormControl, InputLabel, Select, MenuItem, Button } from '@mui/material';
 import { Search, RotateCcw, Filter } from 'lucide-react';
-import { tokens } from '@/lib/theme';
-import { getAssessmentDisplayName } from '@/lib/assessment';
+import { tokens } from '@/lib/themeTokens';
+import { getAssessmentDisplayName, TRAINING_PROGRAM_OPTIONS } from '@/lib/assessment';
 
 export interface ReportFilters {
   from: string;
@@ -56,27 +56,46 @@ export default function ReportsFilterBar({ initialFilters, assessmentTypes, onAp
           sx={{ flex: '1 1 200px', minWidth: 200 }}
         />
 
-        {/* Date From */}
+        {/* Awal Periode */}
         <TextField
-          label="Date From"
+          label="Awal Periode"
           type="date"
           size="small"
           InputLabelProps={{ shrink: true }}
           value={filters.from}
           onChange={(e) => handleChange('from', e.target.value)}
-          sx={{ width: 150 }}
+          sx={{ width: 160 }}
         />
 
-        {/* Date To */}
+        {/* Akhir Periode */}
         <TextField
-          label="Date To"
+          label="Akhir Periode"
           type="date"
           size="small"
           InputLabelProps={{ shrink: true }}
           value={filters.to}
           onChange={(e) => handleChange('to', e.target.value)}
-          sx={{ width: 150 }}
+          sx={{ width: 160 }}
         />
+
+        {(filters.from || filters.to) && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => {
+              handleChange('from', '');
+              handleChange('to', '');
+            }}
+            sx={{
+              color: tokens.colors.text.secondary,
+              borderColor: tokens.colors.border,
+              whiteSpace: 'nowrap',
+              height: 38,
+            }}
+          >
+            Reset Periode
+          </Button>
+        )}
 
         {/* Assessment Type */}
         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -98,7 +117,10 @@ export default function ReportsFilterBar({ initialFilters, assessmentTypes, onAp
         <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel id="reports-program-label">Program</InputLabel>
           <Select labelId="reports-program-label" value={filters.trainingProgram || ''} label="Program" onChange={(e) => handleChange('trainingProgram', e.target.value)}>
-            <MenuItem value="">All</MenuItem><MenuItem value="NEOP">NEOP</MenuItem><MenuItem value="REFRESHMENT">Refreshment</MenuItem><MenuItem value="TEST_DRIVE">Test Drive</MenuItem>
+            <MenuItem value="">All</MenuItem>
+            {TRAINING_PROGRAM_OPTIONS.map((p) => (
+              <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+            ))}
           </Select>
         </FormControl>
 

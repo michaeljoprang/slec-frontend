@@ -192,16 +192,16 @@ export const DDT_SECTIONS: AssessmentSection[] = [
     items: [
       {
         id: 'B1_1',
-        description: 'Mengatur posisi tepat duduk sebelum bergerak',
-        text: 'Mengatur posisi tepat duduk sebelum bergerak',
+        description: 'Mengatur posisi tempat duduk sebelum bergerak',
+        text: 'Mengatur posisi tempat duduk sebelum bergerak',
         deductionPoint: 3,
         penalty: 3,
         points: 3,
       },
       {
         id: 'B1_2',
-        description: 'Menggunakan Sabuk pengaman dengan baik & benar',
-        text: 'Menggunakan Sabuk pengaman dengan baik & benar',
+        description: 'Menggunakan sabuk pengaman dengan baik & benar',
+        text: 'Menggunakan sabuk pengaman dengan baik & benar',
         deductionPoint: 3,
         penalty: 3,
         points: 3,
@@ -302,16 +302,16 @@ export const DDT_SECTIONS: AssessmentSection[] = [
     items: [
       {
         id: 'B4_1',
-        description: 'Mengatur posisi tepat duduk sebelum bergerak',
-        text: 'Mengatur posisi tepat duduk sebelum bergerak',
+        description: 'Mengatur posisi tempat duduk sebelum bergerak',
+        text: 'Mengatur posisi tempat duduk sebelum bergerak',
         deductionPoint: 3,
         penalty: 3,
         points: 3,
       },
       {
         id: 'B4_2',
-        description: 'Menggunakan Sabuk pengaman dengan baik & benar',
-        text: 'Menggunakan Sabuk pengaman dengan baik & benar',
+        description: 'Menggunakan sabuk pengaman dengan baik & benar',
+        text: 'Menggunakan sabuk pengaman dengan baik & benar',
         deductionPoint: 3,
         penalty: 3,
         points: 3,

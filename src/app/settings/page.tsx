@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { Settings, RefreshCw, Link as LinkIcon, Lock, Clock, Target } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 
 export default function SettingsPage() {
   const [tabValue, setTabValue] = useState(0);

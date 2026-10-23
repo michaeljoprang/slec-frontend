@@ -1,68 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================================
    SLEC – Global Styles
    ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+html, body { max-width: 100vw; overflow-x: hidden; height: 100%; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f9fafb; color: #0f172a; line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.recharts-default-tooltip { background-color: #ffffff !important; }
 
-/* Reset / Baseline */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Dashboard fallback styles: intentionally independent of Tailwind output. */
+main.min-h-screen { min-height: calc(100vh - 64px); width: 100%; }
+main.space-y-6 > * + * { margin-top: 24px; }
+main.bg-slate-50 { background: #f9fafb; }
+main.p-6 { padding: 24px; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: minmax(0, 1fr); }
+.gap-6 { gap: 24px; }
+.rounded-xl { border-radius: 12px; }
+.border { border-width: 1px; border-style: solid; }
+.border-slate-100 { border-color: #f1f5f9; }
+.border-slate-200 { border-color: #e2e8f0; }
+.bg-white { background: #fff; }
+.p-6 { padding: 24px; }
+.p-5 { padding: 20px; }
+.shadow-sm { box-shadow: 0 4px 18px rgba(15, 23, 42, .06); }
+.text-2xl { font-size: 1.5rem; }
+.font-extrabold, .font-bold { font-weight: 700; }
+.text-slate-900 { color: #0f172a; }
+.text-slate-800 { color: #1e293b; }
+.text-slate-700 { color: #334155; }
+.text-slate-600 { color: #475569; }
+.text-slate-500 { color: #64748b; }
+.text-slate-400 { color: #94a3b8; }
+.text-sm { font-size: .875rem; }
+.text-xs { font-size: .75rem; }
+.mt-1 { margin-top: 4px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+.flex { display: flex; }
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 8px; }
+.overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
+.w-full { width: 100%; }
+.h-2 { height: 8px; }
+.h-72 { height: 288px; }
+.rounded-lg { border-radius: 8px; }
+.bg-slate-100 { background: #f1f5f9; }
+.bg-blue-50 { background: #eff6ff; } .text-blue-600 { color: #2563eb; }
+.bg-emerald-50 { background: #ecfdf5; } .text-emerald-600 { color: #059669; }
+.bg-teal-50 { background: #f0fdfa; } .text-teal-600 { color: #0d9488; }
+.bg-amber-50 { background: #fffbeb; } .text-amber-600 { color: #d97706; }
+.text-red-500 { color: #ef4444; }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.px-4 { padding-left: 16px; padding-right: 16px; } .py-3 { padding-top: 12px; padding-bottom: 12px; }
+@media (min-width: 768px) { .md\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lg\\:col-span-2 { grid-column: span 2 / span 2; } }
 
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  height: 100%;
-}
-
-body {
-  font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
-  line-height: 1.6;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Scrollbar styling for webkit browsers */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Remove default focus outlines and add accessible custom ones */
-:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Recharts tooltip override for consistency */
-.recharts-default-tooltip {
-  background-color: #ffffff !important;
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #ffffff !important;
+  }
+  html, body, #__next, main {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+  }
+  .no-print, .print\:hidden {
+    display: none !important;
+  }
+  .print\:block {
+    display: block !important;
+  }
+  .print\:flex {
+    display: flex !important;
+  }
+  .print\:table {
+    display: table !important;
+  }
+  .page-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 }

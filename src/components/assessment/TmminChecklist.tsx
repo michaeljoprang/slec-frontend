@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Paper, IconButton } from '@mui/material';
 import { Minus, Plus } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import { TmminSection, TmminChecklistItem } from '@/features/assessment/tmmin';
 
 interface TmminChecklistProps {

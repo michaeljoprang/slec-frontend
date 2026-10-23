@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { DistributionData } from '@/types';
 
 interface DistributionChartProps {

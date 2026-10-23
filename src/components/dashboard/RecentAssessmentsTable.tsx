@@ -12,7 +12,7 @@ import {
   TableHead,
   TableRow,
 } from '@mui/material';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { RecentAssessmentRow } from '@/types';
 import ResultBadge from '@/components/common/ResultBadge';
 

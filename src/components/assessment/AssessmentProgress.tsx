@@ -3,7 +3,7 @@
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { AssessmentSection, AnswerMap } from '@/lib/assessment';
 
 interface AssessmentProgressProps {

@@ -1,0 +1,31 @@
+export const tokens = {
+  sidebarWidth: 260,
+  sidebarCollapsedWidth: 72,
+  headerHeight: 64,
+  colors: {
+    primary: '#1e40af', primaryLight: '#3b82f6', primaryDark: '#1e3a8a', secondary: '#0f766e',
+    background: '#f9fafb', surface: '#ffffff', surfaceHover: '#f8fafc',
+    border: '#e5e7eb', borderLight: '#f3f4f6',
+    text: { primary: '#1e293b', secondary: '#475569', tertiary: '#94a3b8', inverse: '#ffffff' },
+    status: { success: '#10b981', successBg: '#d1fae5', warning: '#f59e0b', warningBg: '#fef3c7', danger: '#ef4444', dangerBg: '#fee2e2', info: '#3b82f6', infoBg: '#dbeafe' },
+    sidebar: {
+      bg: '#ffffff',
+      text: '#475569',
+      textActive: '#9f1239',
+      categoryText: '#dc2626',
+      activeItemBg: '#ffe4e6',
+      hoverItemBg: '#f8fafc',
+      border: '#e5e7eb',
+    },
+    senda: {
+      red: '#dc2626',
+      redDark: '#9f1239',
+      pinkBg: '#ffe4e6',
+      pinkHover: '#fecdd3',
+      grayBg: '#f9fafb',
+      cardBorder: '#e5e7eb',
+    },
+  },
+  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 },
+  borderRadius: { sm: 6, md: 8, lg: 12 },
+} as const;

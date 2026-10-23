@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 
 interface SectionHeaderProps {
   title: string;

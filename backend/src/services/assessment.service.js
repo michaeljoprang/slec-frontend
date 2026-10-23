@@ -14,7 +14,8 @@ const PASS_THRESHOLD = 70;
 async function createAssessment(data) {
   // data contains: header (participant info), assessmentType, sections, answers
 
-  if (data.assessmentType !== 'DDT' && data.assessmentType !== 'TMMIN') {
+  const validTypes = ['DDT', 'TMMIN', 'TMMIN_STANDARD', 'TMMIN_REFRESHMENT'];
+  if (!validTypes.includes(data.assessmentType)) {
     throw new Error('Invalid or unsupported assessment type');
   }
 
@@ -54,10 +55,10 @@ async function createAssessment(data) {
     actualPoint = Math.max(0, DDT_TOTAL_POINT - totalDeduction);
     score = (actualPoint / DDT_TOTAL_POINT) * 100;
     result = score >= PASS_THRESHOLD ? 'PASS' : 'FAIL';
-  } else if (data.assessmentType === 'TMMIN') {
-    // TMMIN has complex timer/overtime rules calculated on frontend
+  } else if (data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD' || data.assessmentType === 'TMMIN_REFRESHMENT') {
+    // Forklift (Standard & Refreshment) has timer/rules calculated on frontend
     if (!data.scoreResult) {
-      throw new Error('Missing scoreResult payload for TMMIN');
+      throw new Error(`Missing scoreResult payload for ${data.assessmentType}`);
     }
     
     totalDeduction = data.scoreResult.totalDeduction || 0;
@@ -74,10 +75,10 @@ async function createAssessment(data) {
       }
       sectionResults.push({
         sectionCode: sec.sectionId,
-        sectionName: sec.sectionId,
-        totalPoint: 0,
+        sectionName: sec.sectionName || sec.sectionId,
+        totalPoint: sec.totalPoint || 0,
         totalDeduction: secDed,
-        actualPoint: 0,
+        actualPoint: sec.actualPoint || (sec.totalPoint ? Math.max(0, sec.totalPoint - secDed) : 0),
         items: sec.items || []
       });
     }
@@ -108,7 +109,7 @@ async function createAssessment(data) {
       header.noPolisi,
       header.lokasiTest,
       header.instruktur,
-      data.assessmentType === 'TMMIN' ? 134 : DDT_TOTAL_POINT,
+      data.assessmentType === 'TMMIN_REFRESHMENT' ? 277 : (data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD' ? 134 : DDT_TOTAL_POINT),
       totalDeduction,
       actualPoint,
       score,

@@ -1,8 +1,9 @@
 function validateAssessmentPayload(data) {
   const errors = [];
 
-  if (!data.assessmentType || (data.assessmentType !== 'DDT' && data.assessmentType !== 'TMMIN')) {
-    errors.push('Invalid or missing assessmentType. Expected: DDT or TMMIN');
+  const validTypes = ['DDT', 'TMMIN', 'TMMIN_STANDARD', 'TMMIN_REFRESHMENT'];
+  if (!data.assessmentType || !validTypes.includes(data.assessmentType)) {
+    errors.push('Invalid or missing assessmentType. Expected: DDT, TMMIN, TMMIN_STANDARD, or TMMIN_REFRESHMENT');
   }
 
   if (!data.header || typeof data.header !== 'object') {
@@ -41,7 +42,7 @@ function validateAssessmentPayload(data) {
             if (item.answer === 'NO' && (item.deductionPoint === undefined || isNaN(parseInt(item.deductionPoint, 10)))) {
               errors.push(`Missing or invalid numeric deductionPoint for NO answer on item ${item.itemId}`);
             }
-          } else if (data.assessmentType === 'TMMIN') {
+          } else if (data.assessmentType === 'TMMIN' || data.assessmentType === 'TMMIN_STANDARD' || data.assessmentType === 'TMMIN_REFRESHMENT') {
             if (item.answer && isNaN(parseInt(item.answer, 10))) {
               errors.push(`Invalid numeric answer value for item ${item.itemId}: ${item.answer}`);
             }

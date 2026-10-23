@@ -57,6 +57,42 @@ export function determineTmminResult(
   return 'FAIL';
 }
 
+export function calculateTmminScore(
+  frequencies: Record<string, number> = {},
+  elapsedSeconds: number = 0
+) {
+  let totalDeduction = 0;
+  const sectionScores = TMMIN_CHECKLIST_DATA.map((sec) => {
+    let secDed = 0;
+    sec.items.forEach((item) => {
+      const freq = Math.max(0, frequencies[item.id] || 0);
+      secDed += freq * item.deduction;
+    });
+    totalDeduction += secDed;
+    return { sectionId: sec.code, deduction: secDed, unansweredCount: 0 };
+  });
+
+  const overtimePenalty = calculateTmminOvertimePenalty(elapsedSeconds || 0);
+  const totalDeds = totalDeduction + overtimePenalty;
+
+  let calculatedScore = ((TMMIN_BASE_SCORE - totalDeds) / TMMIN_BASE_SCORE) * 100;
+  calculatedScore = Math.round(calculatedScore * 10) / 10;
+  calculatedScore = Math.max(0, Math.min(100, calculatedScore));
+
+  const resultStr = determineTmminResult(calculatedScore, elapsedSeconds || 0);
+
+  return {
+    totalPoint: TMMIN_BASE_SCORE,
+    totalDeduction: totalDeds,
+    actual: calculatedScore,
+    score: calculatedScore,
+    result: resultStr,
+    sectionScores,
+    overtimePenalty,
+    elapsedSeconds: elapsedSeconds || 0,
+  };
+}
+
 export const TMMIN_BASE_SCORE = 134;
 export const FORKLIFT_BASE_SCORE = 134;
 

@@ -1,224 +1,123 @@
-'use client';
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Button, Alert, Skeleton } from '@mui/material';
-import { Download, FileBarChart } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import ReportsFilterBar, { ReportFilters } from '@/components/reports/ReportsFilterBar';
-import ReportsTable from '@/components/reports/ReportsTable';
-import { tokens } from '@/lib/theme';
-import { getAssessmentDisplayName } from '@/lib/assessment';
-import { exportToCSV } from '@/lib/export';
+import ReportsTable, { type ReportRow } from '@/components/reports/ReportsTable';
+import { prisma } from '@/lib/prisma';
+import {
+  getAssessmentDisplayName,
+  formatAuditDocNumber,
+  formatVehicleIdentifier,
+  formatPersonName,
+} from '@/lib/assessment';
+import {
+  PRISMA_MATRIX_ASSESSMENT_WHERE,
+  isAssessmentCompleted,
+  isDrivingAssessment,
+  isForkliftAssessment,
+} from '@/lib/matrixService';
 
-interface ApiAssessment {
-  id: string;
-  assessmentType: string;
-  assessmentDate: string;
-  participantName: string;
-  vehicleType: string;
-  licensePlate: string;
-  testLocation: string;
-  instructor: string;
-  score: string | number;
-  result: string;
-  trainingProgram?: string;
-  durationSeconds?: number;
-  createdAt?: string;
+function normalizeStatus(result: string) {
+  return result === 'PASS' || result === 'LULUS' ? 'PASS' : 'FAIL';
 }
 
-const DEFAULT_FILTERS: ReportFilters = {
-  from: '',
-  to: '',
-  assessmentType: '',
-  result: '',
-  trainingProgram: '',
-  search: '',
-};
+function levelFor(score: number, status: 'PASS' | 'FAIL') {
+  if (status === 'PASS' && score >= 85) return 'Hijau' as const;
+  if (score >= 70) return 'Kuning' as const;
+  return 'Merah' as const;
+}
 
-export default function ReportsPage() {
-  const [data, setData] = useState<ApiAssessment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [appliedFilters, setAppliedFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
-  const [assessmentTypes, setAssessmentTypes] = useState<string[]>([]);
+export const dynamic = 'force-dynamic';
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`/api/assessments`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load assessment data.');
-      const result = await res.json();
-      const rows: ApiAssessment[] = result.data || result || [];
-      setData(rows);
-      
-      const types = Array.from(new Set(rows.map(r => r.assessmentType)));
-      setAssessmentTypes(types);
-    } catch (err: any) {
-      setError(err.message || 'Unknown error occurred.');
-    } finally {
-      setLoading(false);
+export default async function ReportsPage() {
+  let assessments: any[] = [];
+  try {
+    assessments = await prisma.assessment.findMany({
+      where: PRISMA_MATRIX_ASSESSMENT_WHERE,
+      orderBy: [
+        { assessmentDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      include: { sections: { include: { answers: true } } },
+    });
+  } catch (error) {
+    console.warn('[ReportsPage] Database query error or unreachable:', (error as any)?.message);
+  }
+
+  const validAssessments = assessments.filter(isAssessmentCompleted);
+
+  // 1. Kelompokkan seluruh riwayat asesmen selesai (PASS / FAIL / DISQUALIFIED) per driver
+  const driverAssessmentsMap = new Map<string, typeof validAssessments>();
+  for (const assessment of validAssessments) {
+    const rawName = assessment.participantName?.trim();
+    if (!rawName) continue;
+    const key = rawName.toLowerCase();
+    if (!driverAssessmentsMap.has(key)) {
+      driverAssessmentsMap.set(key, []);
     }
-  };
+    driverAssessmentsMap.get(key)!.push(assessment);
+  }
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // 2. Ambil entri driver unik berdasarkan urutan asesmen terbaru (validAssessments sudah terurut desc)
+  const seenDrivers = new Set<string>();
+  const rows: ReportRow[] = [];
 
-  const handleApplyFilters = (filters: ReportFilters) => {
-    setAppliedFilters(filters);
-  };
+  for (const assessment of validAssessments) {
+    const rawName = assessment.participantName?.trim();
+    const key = rawName ? rawName.toLowerCase() : '';
+    if (key && seenDrivers.has(key)) {
+      continue;
+    }
+    if (key) {
+      seenDrivers.add(key);
+    }
 
-  const handleResetFilters = () => {
-    setAppliedFilters(DEFAULT_FILTERS);
-  };
+    const driverHistory = (key && driverAssessmentsMap.get(key)) || [assessment];
 
-  // Safe client-side filtering matching the requested logic
-  const filteredData = useMemo(() => {
-    return data.filter((row) => {
-      // Date filter (assessmentDate is assumed to be ISO string YYYY-MM-DD...)
-      const dateStr = row.assessmentDate || row.createdAt || '';
-      if (appliedFilters.from) {
-        if (dateStr < appliedFilters.from) return false;
-      }
-      if (appliedFilters.to) {
-        // Adding 'T23:59:59' to handle inclusivity logic properly if dates strictly match
-        if (dateStr.slice(0, 10) > appliedFilters.to) return false;
-      }
-      
-      // Type
-      if (appliedFilters.assessmentType && row.assessmentType !== appliedFilters.assessmentType) {
-        return false;
-      }
-      
-      // Training program
-      if (appliedFilters.trainingProgram && row.trainingProgram !== appliedFilters.trainingProgram) return false;
+    // Ambil nilai asesmen terakhir yang berstatus selesai/lulus per kategori untuk masing-masing driver:
+    // a. drivingScore: skor dari Truck Assessment DDT
+    const latestDriving = driverHistory.find((a: any) => isDrivingAssessment(a));
+    const drivingAverage =
+      latestDriving && latestDriving.score !== null && latestDriving.score !== undefined
+        ? Number(latestDriving.score)
+        : null;
 
-      // Result
-      if (appliedFilters.result) {
-        // Standardize disqualified to FAIL for generic result filtering, or direct match
-        const standardResult = row.result === 'DISQUALIFIED' ? 'FAIL' : row.result;
-        if (standardResult !== appliedFilters.result && row.result !== appliedFilters.result) {
-          return false;
-        }
-      }
-      
-      // Search Participant/Plate (case-insensitive)
-      if (appliedFilters.search) {
-        const query = appliedFilters.search.toLowerCase();
-        const pName = (row.participantName || '').toLowerCase();
-        const lPlate = (row.licensePlate || '').toLowerCase();
-        if (!pName.includes(query) && !lPlate.includes(query)) {
-          return false;
-        }
-      }
+    // b. forkliftScore: skor dari Forklift Standard atau Forklift Refreshment
+    const latestForklift = driverHistory.find((a: any) => isForkliftAssessment(a));
+    const forkliftAverage =
+      latestForklift && latestForklift.score !== null && latestForklift.score !== undefined
+        ? Number(latestForklift.score)
+        : null;
 
-      return true;
+    const score = Number(assessment.score) || 0;
+    const status = normalizeStatus(assessment.result);
+
+    const isFork = isForkliftAssessment(assessment);
+    const formattedPlate = formatVehicleIdentifier(assessment.licensePlate, isFork);
+    const docNo = formatAuditDocNumber(
+      assessment.id,
+      assessment.assessmentType,
+      assessment.assessmentDate || assessment.createdAt
+    );
+
+    rows.push({
+      id: assessment.id,
+      driver: formatPersonName(assessment.participantName) || 'Driver Belum Bernama',
+      nik: formattedPlate,
+      plateOrUnit: formattedPlate,
+      docNumber: docNo,
+      program: getAssessmentDisplayName(assessment.assessmentType),
+      assessmentType: assessment.assessmentType,
+      drivingAverage,
+      forkliftAverage,
+      score,
+      level: levelFor(score, status),
+      status,
+      evaluationDate: (assessment.assessmentDate || assessment.createdAt).toISOString(),
     });
-  }, [data, appliedFilters]);
-
-  const handleExportCSV = () => {
-    if (!filteredData.length) return;
-
-    const headers = [
-      'Date',
-      'Participant',
-      'Assessment',
-      'Vehicle',
-      'License Plate',
-      'Location',
-      'Instructor',
-      'Score',
-      'Result',
-    ];
-
-    const mappedRows = filteredData.map(row => {
-      const scoreNum = typeof row.score === 'number' ? row.score : parseFloat(String(row.score));
-      return {
-        'Date': (row.assessmentDate || row.createdAt || '').slice(0, 10),
-        'Participant': row.participantName,
-        'Assessment': getAssessmentDisplayName(row.assessmentType),
-        'Vehicle': row.vehicleType,
-        'License Plate': row.licensePlate,
-        'Location': row.testLocation,
-        'Instructor': row.instructor,
-        'Score': scoreNum.toFixed(1),
-        'Result': row.result === 'DISQUALIFIED' ? 'FAIL' : row.result,
-      };
-    });
-
-    const dateStr = new Date().toISOString().slice(0, 10);
-    exportToCSV(`slec-assessment-report-${dateStr}.csv`, mappedRows, headers);
-  };
+  }
 
   return (
-    <AppShell pageTitle="Reports">
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 1400, mx: 'auto' }}>
-        
-        {/* Header Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <FileBarChart size={24} color={tokens.colors.primaryLight} />
-            <Box>
-              <Typography variant="h2" sx={{ fontWeight: 700, color: tokens.colors.text.primary, lineHeight: 1.2 }}>
-                Reports
-              </Typography>
-              <Typography variant="body2" sx={{ color: tokens.colors.text.secondary }}>
-                Assessment reports and data export.
-              </Typography>
-            </Box>
-          </Box>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<Download size={18} />}
-            onClick={handleExportCSV}
-            disabled={loading || filteredData.length === 0}
-            sx={{ fontWeight: 600 }}
-          >
-            Export CSV
-          </Button>
-        </Box>
-
-        {/* Filter Section */}
-        <ReportsFilterBar
-          initialFilters={appliedFilters}
-          assessmentTypes={assessmentTypes}
-          onApply={handleApplyFilters}
-          onReset={handleResetFilters}
-        />
-
-        {/* State Management */}
-        {error && (
-          <Alert
-            severity="error"
-            action={
-              <Box component="button" onClick={loadData} sx={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
-                Retry
-              </Box>
-            }
-          >
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Box>
-            <Skeleton variant="rectangular" height={50} sx={{ borderRadius: `${tokens.borderRadius.md}px`, mb: 1 }} />
-            <Skeleton variant="rectangular" height={50} sx={{ borderRadius: `${tokens.borderRadius.md}px`, mb: 1 }} />
-            <Skeleton variant="rectangular" height={50} sx={{ borderRadius: `${tokens.borderRadius.md}px`, mb: 1 }} />
-          </Box>
-        ) : (
-          <Box>
-            <Typography variant="body2" sx={{ color: tokens.colors.text.secondary, mb: 1, fontWeight: 600 }}>
-              Showing {filteredData.length} result{filteredData.length !== 1 ? 's' : ''}
-            </Typography>
-            <ReportsTable data={filteredData} />
-          </Box>
-        )}
-
-      </Box>
+    <AppShell pageTitle="Laporan & Rekapitulasi Performa">
+      <ReportsTable data={rows} />
     </AppShell>
   );
 }
+

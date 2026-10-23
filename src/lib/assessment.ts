@@ -2,33 +2,146 @@
 // SLEC - Assessment Domain Logic
 // ============================================================
 
+export {
+  formatPlatPolisi,
+  formatNoBody,
+  formatNoLambung,
+  formatVehicleIdentifier,
+  cleanTrainerNotes,
+  extractDisqualificationReason,
+  formatPersonName,
+} from './utils';
+
 // ---- Assessment Types ----
 
 export type AssessmentType = 'DDT' | 'TMMIN' | 'TMMIN_STANDARD' | 'TMMIN_REFRESHMENT';
-export type TrainingProgram = 'NEOP' | 'REFRESHMENT' | 'TEST_DRIVE' | '';
+export type TrainingProgram = 'NEOP' | 'REFRESHMENT' | 'RETRAINING' | 'TEST_DRIVE' | '';
 export type AssessmentResult = 'PASS' | 'FAIL' | 'DISQUALIFIED';
 export type ChecklistAnswer = 'YES' | 'NO' | null;
 
-// ---- DDT Header Info ----
+export const TRAINING_PROGRAM_OPTIONS = [
+  { value: 'NEOP', label: 'NEOP' },
+  { value: 'REFRESHMENT', label: 'Refreshment' },
+  { value: 'RETRAINING', label: 'Retraining' },
+  { value: 'TEST_DRIVE', label: 'Test Drive' },
+] as const;
 
-export function isForkliftAssessment(type: AssessmentType | string | null): boolean {
-  return type === 'TMMIN' || type === 'TMMIN_STANDARD' || type === 'TMMIN_REFRESHMENT';
+export function getTrainingProgramLabel(program?: string | null): string {
+  if (!program) return '—';
+  const clean = program.trim();
+  const cleanUpper = clean.toUpperCase();
+  if (
+    cleanUpper === 'NEOP' ||
+    cleanUpper.includes('NEOP') ||
+    cleanUpper.includes('NEW EMPLOYEE ORIENTATION PROGRAM')
+  ) {
+    return 'NEOP';
+  }
+  const cleanKey = cleanUpper.replace(/\s+/g, '_');
+  const found = TRAINING_PROGRAM_OPTIONS.find(
+    (p) => p.value === cleanKey || p.label.toUpperCase() === cleanUpper
+  );
+  return found ? found.label : program;
 }
 
-export function isForkliftRefreshment(type: AssessmentType | string | null): boolean {
+// ---- DDT Header Info ----
+
+export function isForkliftAssessment(typeOrObj?: any): boolean {
+  if (!typeOrObj) return false;
+  const type = (typeof typeOrObj === 'string' ? typeOrObj : typeOrObj.assessmentType || '').toUpperCase().trim();
+  const vehicle = (typeof typeOrObj === 'object' && typeOrObj.vehicleType ? typeOrObj.vehicleType : '').toUpperCase().trim();
+  const program = (typeof typeOrObj === 'object' && typeOrObj.trainingProgram ? typeOrObj.trainingProgram : '').toUpperCase().trim();
+  return (
+    type === 'TMMIN' ||
+    type === 'TMMIN_STANDARD' ||
+    type === 'TMMIN_REFRESHMENT' ||
+    type.includes('FORKLIFT') ||
+    vehicle.includes('FORKLIFT') ||
+    program.includes('FORKLIFT')
+  );
+}
+
+export const isForklift = isForkliftAssessment;
+
+export function isForkliftRefreshment(type?: AssessmentType | string | null): boolean {
   return type === 'TMMIN_REFRESHMENT';
 }
 
-export function getAssessmentDisplayName(type: string): string {
+export function isForkliftStandard(type?: AssessmentType | string | null): boolean {
+  return type === 'TMMIN' || type === 'TMMIN_STANDARD';
+}
+
+export function getAssessmentDisplayName(type?: string | null): string {
   if (!type) return '';
   if (type === 'TMMIN' || type === 'TMMIN_STANDARD') return 'Forklift - Standard';
   if (type === 'TMMIN_REFRESHMENT') return 'Forklift - Refreshment';
-  if (type === 'DDT') return 'Truck Assessment';
+  if (type === 'DDT') return 'Truck Assessment DDT';
   return type;
 }
 
-export function getPassingScore(type: string): number {
+export function getPassingScore(type?: string | null): number {
   return type === 'TMMIN_REFRESHMENT' ? 75 : 70;
+}
+
+/**
+ * Standarisasi Format No. Dokumen Cetak Asesmen untuk Audit Tracking:
+ * Format: SLEC/${tipeUjian}/${tahun}/${bulan}/${id.slice(0, 8).toUpperCase()}
+ * Contoh Output:
+ * - SLEC/DDT/2026/10/F513E16A
+ * - SLEC/FORKLIFT/2026/10/F513E16A
+ */
+export function formatAuditDocNumber(
+  id?: string | null,
+  assessmentType?: string | null,
+  assessmentDate?: string | Date | null
+): string {
+  // 1. Tipe Ujian: DDT atau FORKLIFT (standar audit SLEC)
+  let tipeUjian = 'DOC';
+  const typeUpper = (assessmentType || '').toUpperCase().trim();
+  if (typeUpper === 'DDT' || typeUpper.includes('DDT')) {
+    tipeUjian = 'DDT';
+  } else if (
+    typeUpper === 'TMMIN' ||
+    typeUpper === 'TMMIN_STANDARD' ||
+    typeUpper === 'TMMIN_REFRESHMENT' ||
+    typeUpper.includes('FORKLIFT')
+  ) {
+    tipeUjian = 'FORKLIFT';
+  } else if (typeUpper) {
+    tipeUjian = typeUpper.replace(/[^A-Z0-9]/g, '') || 'DOC';
+  }
+
+  // 2. Tahun dan Bulan
+  let tahun = '';
+  let bulan = '';
+
+  if (assessmentDate) {
+    if (typeof assessmentDate === 'string') {
+      const match = assessmentDate.match(/^(\d{4})-(\d{2})/);
+      if (match) {
+        tahun = match[1];
+        bulan = match[2];
+      }
+    }
+    if (!tahun || !bulan) {
+      const d = typeof assessmentDate === 'string' ? new Date(assessmentDate) : assessmentDate;
+      if (!isNaN(d.getTime())) {
+        tahun = String(d.getFullYear());
+        bulan = String(d.getMonth() + 1).padStart(2, '0');
+      }
+    }
+  }
+
+  if (!tahun || !bulan) {
+    const now = new Date();
+    tahun = String(now.getFullYear());
+    bulan = String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  // 3. ID Slice (8 karakter pertama dalam huruf kapital)
+  const shortId = id && id !== 'AS-DRAFT' ? id.slice(0, 8).toUpperCase() : 'DRAFT';
+
+  return `SLEC/${tipeUjian}/${tahun}/${bulan}/${shortId}`;
 }
 
 export interface DDTHeaderInfo {
@@ -40,6 +153,7 @@ export interface DDTHeaderInfo {
   umur: string;
   golSIM: string;
   masaBerlakuSIM: string;
+  sioKemnaker?: string;
   instruktur: string;
   trainingProgram: TrainingProgram;
 }
@@ -136,3 +250,5 @@ export function initAnswerMap(sections: AssessmentSection[]): AnswerMap {
   }
   return map;
 }
+
+export { getSectionTimeLimit, getAssessmentTimeLimits } from '@/features/assessment/scoringEngine';

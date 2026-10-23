@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Box, Paper, Typography, Grid } from '@mui/material';
 import { Truck, Forklift } from 'lucide-react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 import type { AssessmentType } from '@/lib/assessment';
 
 interface AssessmentTypeSelectorProps {

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Box, Paper, Typography, LinearProgress, Chip, Button } from '@mui/material';
-import { tokens } from '@/lib/theme';
+import { CheckCheck } from 'lucide-react';
+import { tokens } from '@/lib/themeTokens';
 import type { AssessmentSection, AnswerMap, ChecklistAnswer } from '@/lib/assessment';
 import ChecklistItem from './ChecklistItem';
 
@@ -14,18 +15,19 @@ interface ChecklistSectionProps {
 }
 
 export default function ChecklistSection({ section, answers, onChange, assessmentType = 'DDT' }: ChecklistSectionProps) {
-  const answered = section.items.filter((item) => answers[item.id] !== null && answers[item.id] !== undefined).length;
+  const answered = section.items.filter((item) => answers[item.id] != null).length;
   const total = section.items.length;
   const deduction = section.items.reduce(
     (sum, item) => sum + (answers[item.id] === 'NO' ? item.deductionPoint : 0),
     0,
   );
   const progress = total > 0 ? (answered / total) * 100 : 0;
+  const isCompleted = answered === total && total > 0;
 
   const handleFillRestYes = () => {
     section.items.forEach((item) => {
       const currentAnswer = answers[item.id];
-      if (currentAnswer === null || currentAnswer === undefined) {
+      if (currentAnswer == null) {
         onChange(item.id, 'YES');
       }
     });
@@ -46,18 +48,29 @@ export default function ChecklistSection({ section, answers, onChange, assessmen
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           {assessmentType === 'DDT' && answered < total && (
             <Button
-              variant="outlined"
+              variant="contained"
               size="small"
               onClick={handleFillRestYes}
+              startIcon={<CheckCheck size={16} />}
               sx={{
                 textTransform: 'none',
                 fontWeight: 600,
-                borderColor: tokens.colors.border,
-                color: tokens.colors.text.secondary,
+                fontSize: '0.8125rem',
+                borderRadius: '6px',
+                px: 1.75,
+                py: 0.65,
+                minHeight: 32,
+                bgcolor: '#16a34a', // Hijau sukses yang tegas & standout
+                color: '#ffffff',
+                boxShadow: '0 1px 3px rgba(22, 163, 74, 0.3)',
+                transition: 'all 0.15s ease-in-out',
                 '&:hover': {
-                  borderColor: tokens.colors.primaryLight,
-                  color: tokens.colors.primaryLight,
-                  bgcolor: 'transparent',
+                  bgcolor: '#15803d',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.45)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:active': {
+                  transform: 'translateY(0)',
                 },
               }}
             >
@@ -72,11 +85,11 @@ export default function ChecklistSection({ section, answers, onChange, assessmen
             />
           )}
           <Chip
-            label={`${answered}/${total}`}
+            label={`${answered}/${total} terjawab`}
             size="small"
             sx={{
-              bgcolor: answered === total ? tokens.colors.status.successBg : tokens.colors.borderLight,
-              color: answered === total ? tokens.colors.status.success : tokens.colors.text.secondary,
+              bgcolor: isCompleted ? tokens.colors.status.successBg : tokens.colors.borderLight,
+              color: isCompleted ? tokens.colors.status.success : tokens.colors.text.secondary,
               fontWeight: 600,
             }}
           />
@@ -93,7 +106,7 @@ export default function ChecklistSection({ section, answers, onChange, assessmen
           mb: 2.5,
           bgcolor: tokens.colors.borderLight,
           '& .MuiLinearProgress-bar': {
-            bgcolor: answered === total ? tokens.colors.status.success : tokens.colors.primaryLight,
+            bgcolor: isCompleted ? tokens.colors.status.success : tokens.colors.primaryLight,
             borderRadius: 2,
           },
         }}

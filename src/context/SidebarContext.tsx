@@ -1,14 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { tokens } from '@/lib/theme';
+import { tokens } from '@/lib/themeTokens';
 
 export interface SidebarContextType {
   collapsed: boolean;
   isCollapsed: boolean;
   open: boolean;
+  sidebarOpen: boolean;
   sidebarWidth: number;
   mobileOpen: boolean;
+  isFullscreen: boolean;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   setMobileOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
@@ -20,8 +22,10 @@ const defaultContextValue: SidebarContextType = {
   collapsed: false,
   isCollapsed: false,
   open: true,
+  sidebarOpen: true,
   sidebarWidth: tokens.sidebarWidth,
   mobileOpen: false,
+  isFullscreen: false,
   toggleSidebar: () => {},
   setSidebarCollapsed: () => {},
   setMobileOpen: () => {},
@@ -34,8 +38,19 @@ const SidebarContext = createContext<SidebarContextType>(defaultContextValue);
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [collapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const sidebarWidth = collapsed
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const sidebarWidth = isFullscreen
+    ? 0
+    : collapsed
     ? tokens.sidebarCollapsedWidth
     : tokens.sidebarWidth;
 
@@ -55,16 +70,18 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     () => ({
       collapsed,
       isCollapsed: collapsed,
-      open: !collapsed,
+      open: !collapsed && !isFullscreen,
+      sidebarOpen: !collapsed && !isFullscreen,
       sidebarWidth,
       mobileOpen,
+      isFullscreen,
       toggleSidebar,
       setSidebarCollapsed,
       setMobileOpen,
       openMobile,
       closeMobile,
     }),
-    [collapsed, mobileOpen, sidebarWidth, toggleSidebar, openMobile, closeMobile]
+    [collapsed, mobileOpen, isFullscreen, sidebarWidth, toggleSidebar, openMobile, closeMobile]
   );
 
   return (

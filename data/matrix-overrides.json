@@ -1,0 +1,282 @@
+{
+  "de2a9216-b8e4-4986-b90c-25c90fb6f365": {
+    "driverId": "de2a9216-b8e4-4986-b90c-25c90fb6f365",
+    "driverName": "ulil",
+    "aspectScores": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      3,
+      4,
+      3,
+      3,
+      2
+    ],
+    "avg": 3,
+    "level": "Hijau",
+    "updatedAt": "2026-10-16T06:02:00.373Z"
+  },
+  "name:ulil": {
+    "driverId": "de2a9216-b8e4-4986-b90c-25c90fb6f365",
+    "driverName": "ulil",
+    "aspectScores": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      3,
+      4,
+      3,
+      3,
+      2
+    ],
+    "avg": 3,
+    "level": "Hijau",
+    "updatedAt": "2026-10-16T06:02:00.373Z"
+  },
+  "2ab3edae-648d-469d-96bb-bac17635f07d": {
+    "driverId": "2ab3edae-648d-469d-96bb-bac17635f07d",
+    "driverName": "toni",
+    "aspectScores": [
+      2,
+      2,
+      2,
+      2,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 2.4,
+    "level": "Kuning",
+    "updatedAt": "2026-10-16T06:02:38.857Z"
+  },
+  "name:toni": {
+    "driverId": "2ab3edae-648d-469d-96bb-bac17635f07d",
+    "driverName": "toni",
+    "aspectScores": [
+      2,
+      2,
+      2,
+      2,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 2.4,
+    "level": "Kuning",
+    "updatedAt": "2026-10-16T06:02:38.857Z"
+  },
+  "f26200e3-cf4f-4f73-a927-2787e89c99a1": {
+    "driverId": "f26200e3-cf4f-4f73-a927-2787e89c99a1",
+    "driverName": "uranus",
+    "aspectScores": [
+      4,
+      4,
+      4,
+      4,
+      3,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 3.8,
+    "level": "Hijau",
+    "notes": "bagus banget",
+    "updatedAt": "2026-10-16T06:21:43.610Z"
+  },
+  "name:uranus": {
+    "driverId": "f26200e3-cf4f-4f73-a927-2787e89c99a1",
+    "driverName": "uranus",
+    "aspectScores": [
+      4,
+      4,
+      4,
+      4,
+      3,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 3.8,
+    "level": "Hijau",
+    "notes": "bagus banget",
+    "updatedAt": "2026-10-16T06:21:43.610Z"
+  },
+  "454631ef-f3b9-4e7a-802d-a328887fcead": {
+    "driverId": "454631ef-f3b9-4e7a-802d-a328887fcead",
+    "driverName": "antares",
+    "aspectScores": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 4,
+    "level": "Hijau",
+    "updatedAt": "2026-10-16T06:04:07.600Z"
+  },
+  "name:antares": {
+    "driverId": "454631ef-f3b9-4e7a-802d-a328887fcead",
+    "driverName": "antares",
+    "aspectScores": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 4,
+    "level": "Hijau",
+    "updatedAt": "2026-10-16T06:04:07.600Z"
+  },
+  "ba027748-ea47-45e3-aadc-07ffada7ec75": {
+    "driverId": "ba027748-ea47-45e3-aadc-07ffada7ec75",
+    "driverName": "abila",
+    "aspectScores": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      2,
+      3,
+      3,
+      2,
+      3
+    ],
+    "avg": 2.6,
+    "level": "Kuning",
+    "notes": "rekomendasi",
+    "updatedAt": "2026-10-16T06:31:29.486Z"
+  },
+  "name:abila": {
+    "driverId": "ba027748-ea47-45e3-aadc-07ffada7ec75",
+    "driverName": "abila",
+    "aspectScores": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      2,
+      3,
+      3,
+      2,
+      3
+    ],
+    "avg": 2.6,
+    "level": "Kuning",
+    "notes": "rekomendasi",
+    "updatedAt": "2026-10-16T06:31:29.486Z"
+  },
+  "dcfc305a-df9f-44fb-ba18-501f6fa6f9c5": {
+    "driverId": "dcfc305a-df9f-44fb-ba18-501f6fa6f9c5",
+    "driverName": "koqi",
+    "aspectScores": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      4,
+      4,
+      3,
+      4,
+      3
+    ],
+    "avg": 3.3,
+    "level": "Hijau",
+    "notes": "[Driving] test • [Forklift] testing",
+    "drivingNotes": "test",
+    "forkliftNotes": "testing",
+    "updatedAt": "2026-10-16T06:56:02.859Z"
+  },
+  "name:koqi": {
+    "driverId": "dcfc305a-df9f-44fb-ba18-501f6fa6f9c5",
+    "driverName": "koqi",
+    "aspectScores": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      4,
+      4,
+      3,
+      4,
+      3
+    ],
+    "avg": 3.3,
+    "level": "Hijau",
+    "notes": "[Driving] test • [Forklift] testing",
+    "drivingNotes": "test",
+    "forkliftNotes": "testing",
+    "updatedAt": "2026-10-16T06:56:02.859Z"
+  },
+  "eaed9aaa-e2a7-415e-8b7d-c9dbf981d797": {
+    "driverId": "eaed9aaa-e2a7-415e-8b7d-c9dbf981d797",
+    "driverName": "abi",
+    "aspectScores": [
+      2,
+      1,
+      1,
+      3,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 2.2,
+    "level": "Kuning",
+    "notes": "rekomendasi test",
+    "drivingNotes": "rekomendasi test",
+    "updatedAt": "2026-10-21T06:24:48.508Z"
+  },
+  "name:abi": {
+    "driverId": "eaed9aaa-e2a7-415e-8b7d-c9dbf981d797",
+    "driverName": "abi",
+    "aspectScores": [
+      2,
+      1,
+      1,
+      3,
+      4,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "avg": 2.2,
+    "level": "Kuning",
+    "notes": "rekomendasi test",
+    "drivingNotes": "rekomendasi test",
+    "updatedAt": "2026-10-21T06:24:48.508Z"
+  }
+}
